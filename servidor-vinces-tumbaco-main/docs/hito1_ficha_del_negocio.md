@@ -1,199 +1,299 @@
 # Hito 1 — Ficha del negocio
 
+**Proyecto:** Plataforma de Intercambio de Libros Usados  
+**Integrantes:** Kenyis Yusley Tumbaco Pillasagua y ____________________  
+**Paralelo:** ____________________
+
+---
+
 ## 1. Negocio de referencia
 
-**Clankart** es una plataforma de India creada por Nitesh Garg para que estudiantes puedan publicar y vender libros usados a otros estudiantes.
+El negocio tomado como referencia es **Clankart**, una plataforma creada por Nitesh Garg en India y orientada principalmente a estudiantes. Su objetivo es permitir que los estudiantes publiquen y vendan libros usados directamente a otros estudiantes.
 
-* **Qué ofrece:** intercambio/compraventa de libros usados entre estudiantes.
-* **A quién se dirige:** principalmente a estudiantes.
-* **Cómo funciona:** los usuarios publican sus libros y otros estudiantes pueden encontrarlos y contactarlos.
-* **Modelo de cobro:** la plataforma comenzó como un servicio gratuito para publicar libros.
-* **Cifras declaradas:** el fundador reportó más de 25.000 estudiantes registrados y aproximadamente USD 1.200 de ingresos mensuales al momento de la entrevista.
+La plataforma surgió al identificar que muchos estudiantes utilizaban sus libros solamente durante uno o dos semestres y luego dejaban de utilizarlos. Clankart permite publicar estos libros para que otros estudiantes puedan encontrarlos y adquirirlos.
 
-**Fuente:** caso de Clankart publicado en Starter Story.
+De acuerdo con el caso publicado por Starter Story, Clankart funciona como un marketplace para estudiantes y la publicación de libros se ofrece de manera gratuita. En el caso presentado se reportan más de 25.000 estudiantes registrados y aproximadamente USD 1.200 de ingresos mensuales.
 
-## 2. Contraste obligatorio
+Este caso sirve como referencia porque nuestro proyecto también busca aprovechar libros usados y facilitar que estudiantes puedan encontrarlos mediante una plataforma digital.
 
-Como contraste se considera un escenario de una plataforma universitaria de intercambio de libros que no logra mantenerse activa cuando tiene pocos usuarios.
+**Fuente:** Starter Story — caso de Clankart.  
+https://www.starterstory.com/stories/clankart
 
-La principal hipótesis es que el problema estaría en la **baja cantidad de usuarios y publicaciones**, porque para que exista un intercambio debe haber suficientes personas ofreciendo y buscando libros al mismo tiempo.
+---
 
-Por esta razón, nuestro proyecto prioriza un proceso sencillo, estados claros y búsqueda de libros disponibles.
+## 2. Caso de contraste
+
+Como caso de contraste se considera **BIGWORDS**, una empresa relacionada con el mercado de libros de texto para estudiantes. La empresa comenzó en 1998 y llegó a crecer considerablemente, incluyendo inversión externa y una estructura empresarial grande. Sin embargo, durante la crisis de las empresas puntocom terminó en bancarrota.
+
+Posteriormente, el proyecto fue retomado con un modelo diferente, enfocado principalmente en comparar precios de libros y conectar a los estudiantes con diferentes vendedores, evitando mantener directamente inventario y procesos de envío.
+
+Nuestra hipótesis es que una plataforma de libros debe evitar una estructura demasiado costosa durante sus primeras etapas. Por esta razón, nuestro proyecto plantea una solución sencilla donde la plataforma organiza la información de los libros y permite gestionar su disponibilidad sin asumir inicialmente procesos complejos como almacenamiento o logística propia.
+
+**Fuente:** TechCrunch — “Kayak For Textbooks: How BIGWORDS Raised $80M, Went Bankrupt, Then Got Profitable Again”.  
+https://techcrunch.com/2012/08/16/the-bigwords-story/
+
+---
 
 ## 3. Adaptación al Ecuador
 
-El proyecto se adapta al contexto ecuatoriano considerando:
+Para adaptar la idea al contexto ecuatoriano se consideran las siguientes condiciones:
 
-1. **Pagos:** el intercambio puede realizarse directamente entre usuarios sin pago dentro de la primera versión. Si posteriormente se incorpora compraventa, se podrían agregar medios de pago electrónicos disponibles en Ecuador.
-2. **Facturación y tributación:** la primera versión se enfoca en intercambio de libros usados entre usuarios. Si posteriormente se convierte en una actividad comercial, se deberá definir el régimen tributario y la facturación correspondiente según las normas del SRI.
-3. **Logística:** se priorizan puntos de encuentro acordados entre los usuarios, especialmente en entornos universitarios.
-4. **Poder adquisitivo:** se busca facilitar el acceso a libros usados a estudiantes que desean reducir el costo de adquirir material académico.
-5. **Informalidad:** el sistema organiza digitalmente intercambios que normalmente podrían coordinarse mediante redes sociales o grupos informales.
+| Condición local | Efecto en el proyecto | Adaptación realizada |
+|---|---|---|
+| Costos de movilización y envío | Enviar un libro puede aumentar el costo para el estudiante. | Se priorizan intercambios o entregas acordadas directamente entre usuarios. |
+| Confianza entre usuarios | Una persona puede publicar información incorrecta o no cumplir con la entrega. | Los libros utilizan estados definidos para identificar su situación dentro de la plataforma. |
+| Uso de grupos y redes sociales para vender artículos usados | La información puede quedar desorganizada y ser difícil de consultar. | La plataforma almacena los libros en una base de datos y permite consultarlos mediante una API. |
 
-## 4. Modelo preliminar
+### Cambio realizado al modelo
 
-### 4.1 Entidades
+La adaptación principal consiste en utilizar un campo `Estado` para los libros.
 
-**Usuario**
+Este campo permite conocer si un libro se encuentra disponible o en otra condición definida por el sistema. De esta forma se evita depender únicamente de mensajes informales entre estudiantes y se mantiene información organizada dentro de la plataforma.
 
-* id
-* nombre
-* correo
-* contraseña
-* estado
+La primera versión no incluye pagos electrónicos ni logística propia. Su objetivo es demostrar el registro, consulta y administración de los libros mediante el servidor.
 
-**Libro**
+---
 
-* id
-* titulo
-* autor
-* editorial
-* anio
-* estado
-* usuario_id
+## 4. Modelo de datos
 
-**Intercambio**
+El dominio completo de la Plataforma de Intercambio de Libros Usados contempla usuarios, libros y los procesos asociados al intercambio. En la versión actual del servidor, la entidad implementada y comprobada mediante la API es `Libro`.
 
-* id
-* usuario_solicitante_id
-* usuario_propietario_id
-* libro_ofrecido_id
-* libro_solicitado_id
-* estado
+### Entidad Usuario
 
-### 4.2 Proceso del negocio
+| Campo | Tipo | Descripción |
+|---|---|---|
+| id | entero | Identificador del usuario. |
+| nombre | texto | Nombre del usuario. |
+| correo | texto | Correo del usuario. |
+| rol | uno de una lista cerrada | Rol asignado dentro de la plataforma. |
 
-1. El usuario se registra en la plataforma.
-2. El usuario publica un libro usado disponible.
-3. Otro usuario consulta los libros publicados.
-4. El usuario solicita un intercambio.
-5. El propietario acepta o rechaza la solicitud.
-6. Si acepta, se coordina la entrega.
-7. Al realizarse la entrega, el intercambio pasa a estado **COMPLETADO**.
+### Entidad Libro
 
-### 4.3 Relaciones
+| Campo | Tipo | Descripción |
+|---|---|---|
+| id | entero | Identificador del libro. |
+| titulo | texto | Título del libro. |
+| autor | texto | Autor del libro. |
+| estado | uno de una lista cerrada | Situación actual del libro. |
 
-* Un **Usuario** puede publicar varios **Libros**.
-* Un **Usuario** puede realizar varios **Intercambios**.
-* Un **Libro** pertenece a un **Usuario**.
-* Un **Intercambio** relaciona usuarios y libros.
+### Entidad Intercambio
 
-### 4.4 Diagrama del modelo
+| Campo | Tipo | Descripción |
+|---|---|---|
+| id | entero | Identificador del intercambio. |
+| libro_id | referencia | Libro relacionado con la solicitud. |
+| solicitante_id | referencia | Usuario que realiza la solicitud. |
+| estado | uno de una lista cerrada | Estado actual del intercambio. |
+| creado | fecha y hora | Momento en que se crea la solicitud. |
+
+### Relaciones
+
+| Entidad A | Relación | Entidad B |
+|---|---|---|
+| Usuario | 1:N | Libro |
+| Usuario | 1:N | Intercambio |
+| Libro | 1:N | Intercambio |
+
+### Estructuras Go propuestas para el dominio
+
+```go
+type Usuario struct {
+	ID     uint   `gorm:"primaryKey" json:"id"`
+	Nombre string `gorm:"not null" json:"nombre"`
+	Correo string `gorm:"unique;not null" json:"correo"`
+	Rol    string `gorm:"not null" json:"rol"`
+}
+
+type Libro struct {
+	ID     uint   `gorm:"primaryKey" json:"id"`
+	Titulo string `gorm:"not null" json:"titulo"`
+	Autor  string `gorm:"not null" json:"autor"`
+	Estado string `gorm:"not null" json:"estado"`
+}
+
+type Intercambio struct {
+	ID            uint   `gorm:"primaryKey" json:"id"`
+	LibroID       uint   `gorm:"not null" json:"libro_id"`
+	SolicitanteID uint   `gorm:"not null" json:"solicitante_id"`
+	Estado        string `gorm:"not null" json:"estado"`
+}
+```
+
+### Diagrama del modelo
 
 ```mermaid
 erDiagram
     USUARIO ||--o{ LIBRO : publica
     USUARIO ||--o{ INTERCAMBIO : solicita
-    USUARIO ||--o{ INTERCAMBIO : recibe
     LIBRO ||--o{ INTERCAMBIO : participa
 
     USUARIO {
         int id
         string nombre
         string correo
-        string contrasena
-        string estado
+        string rol
     }
 
     LIBRO {
         int id
         string titulo
         string autor
-        string editorial
-        int anio
         string estado
-        int usuario_id
     }
 
     INTERCAMBIO {
         int id
-        int usuario_solicitante_id
-        int usuario_propietario_id
-        int libro_ofrecido_id
-        int libro_solicitado_id
+        int libro_id
+        int solicitante_id
         string estado
     }
 ```
 
-## 5. Estado de la entidad principal: Intercambio
+### Decisión debatible
 
-La entidad principal es **Intercambio**.
+Se decidió representar el estado como un campo controlado dentro de las entidades en lugar de permitir cualquier texto libre.
+
+Esto facilita las validaciones del servidor y evita guardar estados incorrectos. En las pruebas automáticas del proyecto se comprueba que un estado inválido produce una respuesta HTTP `422`.
+
+---
+
+## 5. Máquina de estados
+
+Para el proceso completo de intercambio se plantea la siguiente máquina de estados.
 
 ### Estados
 
-* PENDIENTE
-* ACEPTADO
-* RECHAZADO
-* COMPLETADO
+| Estado | Descripción |
+|---|---|
+| PENDIENTE | Estado inicial de una solicitud. |
+| ACEPTADO | La solicitud fue aceptada. |
+| RECHAZADO | La solicitud fue rechazada. |
+| COMPLETADO | El intercambio fue realizado. |
 
-### Flujo de estados
+El estado inicial es:
+
+**PENDIENTE**
+
+### Transiciones permitidas
+
+| Estado actual | Nuevo estado | Quién realiza la acción | Condición |
+|---|---|---|---|
+| PENDIENTE | ACEPTADO | Propietario | La solicitud es válida y el libro está disponible. |
+| PENDIENTE | RECHAZADO | Propietario | El propietario decide no realizar el intercambio. |
+| ACEPTADO | COMPLETADO | Usuario/Propietario | La entrega del libro fue realizada. |
+
+### Diagrama de estados
 
 ```mermaid
 stateDiagram-v2
     [*] --> PENDIENTE
+
     PENDIENTE --> ACEPTADO : propietario acepta
     PENDIENTE --> RECHAZADO : propietario rechaza
-    ACEPTADO --> COMPLETADO : se realiza la entrega
+    ACEPTADO --> COMPLETADO : entrega realizada
+
     RECHAZADO --> [*]
     COMPLETADO --> [*]
 ```
 
 ### Transición prohibida
 
-Un intercambio en estado **RECHAZADO** no puede pasar a **ACEPTADO** ni a **COMPLETADO**.
+No se permite:
 
-## 6. Reglas del negocio
+```text
+RECHAZADO → ACEPTADO
+```
 
-1. Un usuario debe estar registrado para publicar o solicitar libros.
-2. Un libro debe pertenecer a un usuario.
-3. Un libro solamente puede participar en un intercambio cuando está disponible.
-4. Un intercambio inicia en estado **PENDIENTE**.
-5. Solo un intercambio **PENDIENTE** puede ser aceptado o rechazado.
-6. Un intercambio **ACEPTADO** puede pasar a **COMPLETADO** cuando se realiza la entrega.
-7. Un intercambio **RECHAZADO** no puede volver a activarse.
-8. Los campos de estado utilizan valores previamente definidos.
+La razón es que una solicitud rechazada se considera finalizada. Si los usuarios desean intentar nuevamente el intercambio, deberán crear una nueva solicitud.
 
-### Valores fijos
+---
 
-**estado_intercambio:**
+## 6. Roles y permisos
 
-* PENDIENTE
-* ACEPTADO
-* RECHAZADO
-* COMPLETADO
+Se plantean dos roles principales: `Usuario` y `Administrador`.
 
-**estado_libro:**
+| Acción | Usuario | Administrador |
+|---|---|---|
+| Consultar libros | Sí | Sí |
+| Registrar libro | Sí | Sí |
+| Consultar un libro | Sí | Sí |
+| Modificar sus libros | Sí | Sí |
+| Eliminar sus libros | Sí | Sí |
+| Gestionar libros de otros usuarios | No | Sí |
+| Supervisar información del sistema | No | Sí |
 
-* DISPONIBLE
-* RESERVADO
-* INTERCAMBIADO
+El usuario trabaja principalmente con sus propios libros, mientras que el administrador tiene permisos de gestión y supervisión sobre la información registrada.
 
-## 7. Roles y permisos
+---
 
-| Rol           | Permisos                                                                        |
-| ------------- | ------------------------------------------------------------------------------- |
-| Usuario       | Registrar libros, consultar libros y solicitar intercambios.                    |
-| Administrador | Gestionar usuarios, libros e intercambios y supervisar información del sistema. |
+## 7. Mapa de endpoints por rol
 
-Los dos roles trabajan sobre los mismos datos, pero tienen diferentes permisos.
+La API implementada actualmente utiliza `Libro` como entidad principal del CRUD.
 
-## 8. Decisiones de tipos
+### Endpoints
 
-| Campo      | Tipo   | Motivo                               |
-| ---------- | ------ | ------------------------------------ |
-| id         | entero | Identifica cada registro.            |
-| nombre     | texto  | Guarda el nombre del usuario.        |
-| correo     | texto  | Guarda el correo electrónico.        |
-| contraseña | texto  | Guarda la contraseña.                |
-| titulo     | texto  | Guarda el título del libro.          |
-| autor      | texto  | Guarda el autor.                     |
-| editorial  | texto  | Guarda la editorial.                 |
-| anio       | entero | Representa el año de publicación.    |
-| estado     | texto  | Permite controlar valores definidos. |
-| usuario_id | entero | Relaciona el libro con un usuario.   |
+| Método | Ruta | Rol | Pantalla | Retorna | Validación | Error |
+|---|---|---|---|---|---|---|
+| GET | `/libros` | Usuario/Admin | Lista de libros | Lista de libros | Parámetros recibidos | 400/500 |
+| GET | `/libros/{id}` | Usuario/Admin | Detalle del libro | Libro solicitado | ID válido y existencia | 400/404 |
+| POST | `/libros` | Usuario/Admin | Publicar libro | Libro creado | Título, autor y estado | 400/422 |
+| PUT | `/libros/{id}` | Usuario/Admin | Editar libro | Libro actualizado | ID, campos y estado | 400/404/422 |
+| DELETE | `/libros/{id}` | Usuario/Admin | Gestión de libro | Confirmación | ID y existencia | 400/404 |
 
-## 9. Declaración de uso de IA
+### Matriz pantalla × endpoint
 
-Se utilizó inteligencia artificial como apoyo para organizar la información, redactar partes del documento y revisar la estructura del modelo.
+| Pantalla | Endpoint utilizado |
+|---|---|
+| Lista de libros | `GET /libros` |
+| Detalle del libro | `GET /libros/{id}` |
+| Publicar libro | `POST /libros` |
+| Editar libro | `PUT /libros/{id}` |
+| Eliminar libro | `DELETE /libros/{id}` |
 
-Las decisiones finales sobre el negocio, entidades, estados, reglas y adaptación al contexto ecuatoriano fueron revisadas y seleccionadas por el equipo.
+### Endpoints comprobados
+
+Durante las pruebas manuales se verificó el funcionamiento de:
+
+```text
+GET    /libros
+GET    /libros/1
+POST   /libros
+PUT    /libros/4
+DELETE /libros/4
+```
+
+También se comprobó una creación correcta mediante:
+
+```text
+POST /libros
+```
+
+obteniendo:
+
+```text
+201 Created
+```
+
+y se comprobó una validación enviando un título vacío, obteniendo el mensaje:
+
+```text
+Titulo y autor son obligatorios
+```
+
+Las rutas se encuentran configuradas desde `main.go` y los manejadores correspondientes se encuentran dentro de:
+
+```text
+internal/libros/
+```
+
+---
+
+## 8. Declaración de IA
+
+Se utilizó ChatGPT como herramienta de apoyo durante el desarrollo del Hito 1.
+
+La inteligencia artificial fue utilizada para apoyar la organización de la documentación, revisar la estructura de la ficha y del addendum, explicar comandos de Go, PostgreSQL y PowerShell, y apoyar la revisión de las pruebas y endpoints.
+
+El equipo ejecutó y comprobó directamente el servidor, la conexión con PostgreSQL, las operaciones CRUD y las pruebas automáticas.
+
+Las decisiones finales relacionadas con el modelo del negocio, el código, las entidades, las validaciones y la documentación fueron revisadas por los integrantes del equipo.

@@ -1,121 +1,242 @@
-# Hito 1 — Addendum
+# Hito 1 — Addendum Técnico
 
-## 1. Alcance del proyecto
+## A. Estructura del repositorio
 
-El proyecto consiste en una **Plataforma de Intercambio de Libros Usados** orientada principalmente a estudiantes.
+La estructura principal del proyecto es:
 
-La primera versión permitirá:
+```text
+servidor-vinces-tumbaco-main/
+│
+├── docs/
+│   ├── decisiones.md
+│   ├── hito1_addendum.md
+│   └── hito1_ficha_del_negocio.md
+│
+├── internal/
+│   ├── config/
+│   │   └── config.go
+│   │
+│   └── libros/
+│       ├── manejadores.go
+│       └── manejadores_test.go
+│
+├── .env
+├── go.mod
+├── go.sum
+├── main.go
+└── README.md
+```
 
-* Registrar usuarios.
-* Publicar libros usados.
-* Consultar libros disponibles.
-* Solicitar intercambios.
-* Aceptar o rechazar solicitudes.
-* Registrar el estado del intercambio.
+### Descripción
 
-## 2. Fuera del alcance
+- `main.go`: inicia el servidor, configura las rutas y la conexión con la aplicación.
+- `internal/config/`: contiene la configuración del proyecto y lectura de variables de entorno.
+- `internal/libros/`: contiene la lógica, manejadores y pruebas relacionadas con los libros.
+- `docs/`: contiene la documentación correspondiente al proyecto.
+- `go.mod` y `go.sum`: administran las dependencias utilizadas por Go.
+- `.env`: contiene las variables de entorno utilizadas de forma local.
 
-En esta primera versión no se incluye:
+---
 
-* Pagos en línea.
-* Envíos a domicilio.
-* Integración con bancos.
-* Sistema de calificaciones.
-* Chat en tiempo real.
-* Aplicación móvil.
+## B. Variables de entorno
 
-Estas funciones podrían considerarse en futuras versiones.
+El proyecto utiliza variables de entorno para configurar el servidor y la conexión con PostgreSQL.
 
-## 3. Entidades principales
+La variable principal utilizada es:
 
-El modelo utilizará tres entidades principales:
+| Variable | Propósito |
+|---|---|
+| `DATABASE_URL` | Define la conexión con la base de datos PostgreSQL. |
+| `PUERTO` | Permite definir el puerto utilizado por el servidor. |
+| `TIEMPO_ESPERA_SEGUNDOS` | Define el tiempo de espera utilizado por el servidor. |
 
-### Usuario
+Ejemplo de configuración:
 
-Representa a la persona que utiliza la plataforma.
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/intercambio_libros?sslmode=disable
+PUERTO=8080
+TIEMPO_ESPERA_SEGUNDOS=5
+```
 
-### Libro
+Las credenciales reales no deben publicarse en el repositorio. El archivo `.env` se utiliza únicamente para la configuración local.
 
-Representa el libro usado que un usuario publica para intercambiar.
+---
 
-### Intercambio
+## C. Pruebas
 
-Representa la solicitud de intercambio entre dos usuarios.
+Las pruebas automáticas se ejecutan mediante:
 
-## 4. Estado principal
+```powershell
+go test ./...
+```
 
-La entidad principal es **Intercambio**.
+El resultado obtenido fue:
 
-Sus estados son:
+```text
+?    github.com/uleam-web-2026-2/KEMA                  [no test files]
+?    github.com/uleam-web-2026-2/KEMA/internal/config  [no test files]
+ok   github.com/uleam-web-2026-2/KEMA/internal/libros
+```
 
-* **PENDIENTE:** se ha solicitado un intercambio.
-* **ACEPTADO:** el propietario acepta la solicitud.
-* **RECHAZADO:** el propietario rechaza la solicitud.
-* **COMPLETADO:** se realizó la entrega del libro.
+También se ejecutaron las pruebas detalladas mediante:
 
-El flujo permitido es:
+```powershell
+go test ./internal/libros -v
+```
 
-**PENDIENTE → ACEPTADO → COMPLETADO**
+Se comprobaron los siguientes casos:
 
-También se permite:
+1. JSON incorrecto responde con código `400`.
+2. Título vacío responde con código `422`.
+3. Estado inválido responde con código `422`.
+4. Autor vacío responde con código `422`.
+5. Título y autor iguales responden con código `422`.
+6. ID inválido es rechazado correctamente.
 
-**PENDIENTE → RECHAZADO**
+El resultado final de las pruebas fue:
 
-Un intercambio rechazado no puede volver a aceptarse.
+```text
+PASS
+ok github.com/uleam-web-2026-2/KEMA/internal/libros
+```
 
-## 5. Reglas principales
+**Evidencia:** insertar aquí una captura de pantalla donde se observe la ejecución de:
 
-1. Solo usuarios registrados pueden publicar libros.
-2. Un libro pertenece a un usuario.
-3. Solo los libros disponibles pueden participar en nuevos intercambios.
-4. Todo intercambio comienza como PENDIENTE.
-5. El propietario puede aceptar o rechazar una solicitud.
-6. Un intercambio aceptado puede finalizar como COMPLETADO.
-7. Un intercambio RECHAZADO no puede volver a ACEPTADO.
-8. Los estados solamente pueden utilizar los valores definidos por el sistema.
+```powershell
+go test ./internal/libros -v
+```
 
-## 6. Roles
+---
 
-### Usuario
+## D. Boceto de la pantalla principal
 
-Puede:
+La pantalla principal propuesta permitirá consultar los libros registrados en la plataforma.
 
-* Registrar y consultar libros.
-* Solicitar intercambios.
-* Consultar sus intercambios.
+```text
++--------------------------------------------------+
+|       PLATAFORMA DE INTERCAMBIO DE LIBROS        |
++--------------------------------------------------+
+| Buscar libro: [________________________] [Buscar] |
++--------------------------------------------------+
+| ID | Título                 | Autor     | Estado  |
+|----|------------------------|-----------|---------|
+| 1  | Cien años de soledad   | G. Márquez|Disponible|
+| 2  | El principito          | Saint-Ex. |Disponible|
+| 3  | Don Quijote            | Cervantes |Disponible|
++--------------------------------------------------+
+|               [ Publicar libro ]                 |
++--------------------------------------------------+
+```
 
-### Administrador
+La pantalla consumiría principalmente el endpoint:
 
-Puede:
+```text
+GET /libros
+```
 
-* Gestionar usuarios.
-* Gestionar libros.
-* Supervisar intercambios.
-* Revisar información del sistema.
+Los campos principales visibles serían:
 
-## 7. Decisiones técnicas
+- ID del libro.
+- Título.
+- Autor.
+- Estado.
 
-Para los identificadores se utilizará el tipo entero.
+El estado permite conocer la situación actual del libro dentro de la plataforma.
 
-Los nombres, títulos, autores, correos y estados se manejarán como texto.
+---
 
-Las relaciones entre entidades se realizarán mediante identificadores de los registros relacionados.
+## E. Diagrama de secuencia
 
-Los estados se manejarán mediante valores definidos para evitar información diferente o incorrecta.
+El siguiente ejemplo representa la consulta de los libros disponibles.
 
-## 8. Criterios de la primera versión
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant Pantalla
+    participant API
+    participant BD as PostgreSQL
 
-La primera versión se considera funcional cuando:
+    Usuario->>Pantalla: Ingresa a la lista de libros
+    Pantalla->>API: GET /libros
+    API->>BD: Consultar libros
+    BD-->>API: Lista de libros
+    API-->>Pantalla: HTTP 200 + JSON
+    Pantalla-->>Usuario: Muestra los libros
+```
 
-* Se puedan registrar libros.
-* Se puedan consultar libros.
-* Se pueda crear una solicitud de intercambio.
-* Se pueda aceptar o rechazar una solicitud.
-* Se pueda completar un intercambio.
-* Se respeten las reglas y estados definidos.
+El flujo comienza cuando el usuario consulta la pantalla de libros. La pantalla realiza una petición `GET /libros`, el servidor consulta PostgreSQL y devuelve la información en formato JSON.
 
-## 9. Uso de IA
+---
 
-Se utilizó inteligencia artificial como apoyo para organizar y redactar el documento.
+## F. Evidencias de respuestas del servidor
 
-El equipo revisó y adaptó el contenido final de acuerdo con los requerimientos del Hito 1 y el funcionamiento planteado para el proyecto.
+### Respuesta correcta
+
+Se realizó una petición:
+
+```text
+POST /libros
+```
+
+con los siguientes datos:
+
+```json
+{
+  "titulo": "El Alquimista",
+  "autor": "Paulo Coelho",
+  "estado": "disponible"
+}
+```
+
+El servidor respondió correctamente con:
+
+```text
+StatusCode: 201
+StatusDescription: Created
+```
+
+Respuesta:
+
+```json
+{
+  "ID": 5,
+  "Titulo": "El Alquimista",
+  "Autor": "Paulo Coelho",
+  "Estado": "disponible",
+  "Prestamos": null
+}
+```
+
+**Evidencia:** insertar aquí la captura de pantalla de PowerShell donde se observe el código `201` y la respuesta del servidor.
+
+### Respuesta con error de validación
+
+También se realizó una petición `POST /libros` enviando el título vacío:
+
+```json
+{
+  "titulo": "",
+  "autor": "Gabriel Garcia Marquez",
+  "estado": "disponible"
+}
+```
+
+El servidor rechazó correctamente la petición porque el título es obligatorio.
+
+Respuesta obtenida:
+
+```text
+Titulo y autor son obligatorios
+```
+
+Este caso corresponde al código HTTP:
+
+```text
+422 Unprocessable Entity
+```
+
+**Evidencia:** insertar aquí la captura de pantalla donde se observe la respuesta de validación.
+
+---
+
+Con estas evidencias se comprueba el funcionamiento del servidor, la conexión con PostgreSQL, las validaciones implementadas y las pruebas automáticas del proyecto.
