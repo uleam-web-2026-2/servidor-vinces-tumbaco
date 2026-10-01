@@ -1,8 +1,8 @@
 # Hito 1 — Ficha del negocio
 
 **Proyecto:** Plataforma de Intercambio de Libros Usados  
-**Integrantes:** Kenyis Yusley Tumbaco Pillasagua y ____________________  
-**Paralelo:** ____________________
+**Integrantes:** Kenyis Yusley Tumbaco Pillasagua y Maria Jose Vinces  
+**Curso:** Aplicaciones web II "A" 
 
 ---
 

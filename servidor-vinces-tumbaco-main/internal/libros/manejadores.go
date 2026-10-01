@@ -17,7 +17,7 @@ type Manejador struct {
 func (m Manejador) ListarLibros(w http.ResponseWriter, r *http.Request) {
 	var libros []Libro
 
-	query := m.DB.Debug().Preload("Prestamos")
+	query := m.DB.Debug().Preload("Prestamos").Order("id ASC")
 
 	estado := r.URL.Query().Get("estado")
 
