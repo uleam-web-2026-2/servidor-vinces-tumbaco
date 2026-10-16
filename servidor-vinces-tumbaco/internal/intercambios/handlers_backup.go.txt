@@ -1,0 +1,432 @@
+package intercambios
+
+import (
+	"encoding/json"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"gorm.io/gorm"
+)
+
+// Handler permite que los endpoints trabajen con la base de datos.
+type Handler struct {
+	DB *gorm.DB
+}
+
+// responderJSON devuelve una respuesta en formato JSON.
+func responderJSON(w http.ResponseWriter, codigo int, datos interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(codigo)
+
+	_ = json.NewEncoder(w).Encode(datos)
+}
+
+// responderError devuelve un mensaje de error en formato JSON.
+func responderError(w http.ResponseWriter, codigo int, mensaje string) {
+	responderJSON(w, codigo, map[string]string{
+		"error": mensaje,
+	})
+}
+
+// ----------------------------------------------------
+// GET /intercambios
+// Lista todos los intercambios.
+// ----------------------------------------------------
+
+func (h *Handler) Listar(w http.ResponseWriter, r *http.Request) {
+	var lista []Intercambio
+
+	if err := h.DB.Order("id ASC").Find(&lista).Error; err != nil {
+		responderError(
+			w,
+			http.StatusInternalServerError,
+			"no se pudieron obtener los intercambios",
+		)
+		return
+	}
+
+	responderJSON(w, http.StatusOK, lista)
+}
+
+// ----------------------------------------------------
+// GET /intercambios/{id}
+// Busca un intercambio por su ID.
+// ----------------------------------------------------
+
+func (h *Handler) Obtener(w http.ResponseWriter, r *http.Request, id uint) {
+	var intercambio Intercambio
+
+	err := h.DB.First(&intercambio, id).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			responderError(
+				w,
+				http.StatusNotFound,
+				"intercambio no encontrado",
+			)
+			return
+		}
+
+		responderError(
+			w,
+			http.StatusInternalServerError,
+			"error al consultar el intercambio",
+		)
+		return
+	}
+
+	responderJSON(w, http.StatusOK, intercambio)
+}
+
+// ----------------------------------------------------
+// POST /intercambios
+// Crea una nueva solicitud de intercambio.
+// ----------------------------------------------------
+
+func (h *Handler) Crear(w http.ResponseWriter, r *http.Request) {
+
+	var entrada struct {
+		LibroID       uint   `json:"libro_id"`
+		SolicitanteID uint   `json:"solicitante_id"`
+		Estado        string `json:"estado"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&entrada); err != nil {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"JSON inválido",
+		)
+		return
+	}
+
+	// Validar libro.
+	if entrada.LibroID == 0 {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"libro_id es obligatorio",
+		)
+		return
+	}
+
+	// Validar solicitante.
+	if entrada.SolicitanteID == 0 {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"solicitante_id es obligatorio",
+		)
+		return
+	}
+
+	// Una solicitud nueva comienza como pendiente.
+	if entrada.Estado == "" {
+		entrada.Estado = EstadoPendiente
+	}
+
+	// Validar estado.
+	if !EstadoValido(entrada.Estado) {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"estado no válido",
+		)
+		return
+	}
+
+	// Comprobar que el libro exista.
+	var libro Libro
+
+	if err := h.DB.First(&libro, entrada.LibroID).Error; err != nil {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"el libro no existe",
+		)
+		return
+	}
+
+	// Comprobar disponibilidad.
+	if !libro.Disponible {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"el libro no está disponible",
+		)
+		return
+	}
+
+	// Comprobar que el usuario solicitante exista.
+	var usuario Usuario
+
+	if err := h.DB.First(&usuario, entrada.SolicitanteID).Error; err != nil {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"el solicitante no existe",
+		)
+		return
+	}
+
+	// Crear intercambio.
+	nuevo := Intercambio{
+		LibroID:       entrada.LibroID,
+		SolicitanteID: entrada.SolicitanteID,
+		Estado:        entrada.Estado,
+	}
+
+	if err := h.DB.Create(&nuevo).Error; err != nil {
+		responderError(
+			w,
+			http.StatusInternalServerError,
+			"no se pudo crear el intercambio",
+		)
+		return
+	}
+
+	responderJSON(
+		w,
+		http.StatusCreated,
+		nuevo,
+	)
+}
+
+// ----------------------------------------------------
+// PUT /intercambios/{id}
+// Actualiza un intercambio existente.
+// ----------------------------------------------------
+
+func (h *Handler) Actualizar(
+	w http.ResponseWriter,
+	r *http.Request,
+	id uint,
+) {
+
+	var intercambio Intercambio
+
+	// Comprobar que exista.
+	if err := h.DB.First(&intercambio, id).Error; err != nil {
+		responderError(
+			w,
+			http.StatusNotFound,
+			"intercambio no encontrado",
+		)
+		return
+	}
+
+	var entrada struct {
+		LibroID       uint   `json:"libro_id"`
+		SolicitanteID uint   `json:"solicitante_id"`
+		Estado        string `json:"estado"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&entrada); err != nil {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"JSON inválido",
+		)
+		return
+	}
+
+	// Validar campos obligatorios.
+	if entrada.LibroID == 0 {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"libro_id es obligatorio",
+		)
+		return
+	}
+
+	if entrada.SolicitanteID == 0 {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"solicitante_id es obligatorio",
+		)
+		return
+	}
+
+	if !EstadoValido(entrada.Estado) {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"estado no válido",
+		)
+		return
+	}
+
+	// Comprobar libro.
+	var libro Libro
+
+	if err := h.DB.First(&libro, entrada.LibroID).Error; err != nil {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"el libro no existe",
+		)
+		return
+	}
+
+	// Comprobar solicitante.
+	var usuario Usuario
+
+	if err := h.DB.First(&usuario, entrada.SolicitanteID).Error; err != nil {
+		responderError(
+			w,
+			http.StatusBadRequest,
+			"el solicitante no existe",
+		)
+		return
+	}
+
+	// Actualizar.
+	intercambio.LibroID = entrada.LibroID
+	intercambio.SolicitanteID = entrada.SolicitanteID
+	intercambio.Estado = entrada.Estado
+
+	if err := h.DB.Save(&intercambio).Error; err != nil {
+		responderError(
+			w,
+			http.StatusInternalServerError,
+			"no se pudo actualizar el intercambio",
+		)
+		return
+	}
+
+	responderJSON(
+		w,
+		http.StatusOK,
+		intercambio,
+	)
+}
+
+// ----------------------------------------------------
+// DELETE /intercambios/{id}
+// Elimina un intercambio.
+// ----------------------------------------------------
+
+func (h *Handler) Eliminar(
+	w http.ResponseWriter,
+	r *http.Request,
+	id uint,
+) {
+
+	var intercambio Intercambio
+
+	if err := h.DB.First(&intercambio, id).Error; err != nil {
+		responderError(
+			w,
+			http.StatusNotFound,
+			"intercambio no encontrado",
+		)
+		return
+	}
+
+	if err := h.DB.Delete(&intercambio).Error; err != nil {
+		responderError(
+			w,
+			http.StatusInternalServerError,
+			"no se pudo eliminar el intercambio",
+		)
+		return
+	}
+
+	responderJSON(
+		w,
+		http.StatusOK,
+		map[string]string{
+			"mensaje": "intercambio eliminado correctamente",
+		},
+	)
+}
+
+// ----------------------------------------------------
+// RUTAS
+// ----------------------------------------------------
+
+func (h *Handler) Rutas(w http.ResponseWriter, r *http.Request) {
+
+	ruta := strings.Trim(r.URL.Path, "/")
+	partes := strings.Split(ruta, "/")
+
+	// ----------------------------------
+	// /intercambios
+	// ----------------------------------
+
+	if len(partes) == 1 && partes[0] == "intercambios" {
+
+		switch r.Method {
+
+		case http.MethodGet:
+			h.Listar(w, r)
+
+		case http.MethodPost:
+			h.Crear(w, r)
+
+		default:
+			responderError(
+				w,
+				http.StatusMethodNotAllowed,
+				"método no permitido",
+			)
+		}
+
+		return
+	}
+
+	// ----------------------------------
+	// /intercambios/{id}
+	// ----------------------------------
+
+	if len(partes) == 2 && partes[0] == "intercambios" {
+
+		numero, err := strconv.ParseUint(
+			partes[1],
+			10,
+			64,
+		)
+
+		if err != nil {
+			responderError(
+				w,
+				http.StatusBadRequest,
+				"ID inválido",
+			)
+			return
+		}
+
+		id := uint(numero)
+
+		switch r.Method {
+
+		case http.MethodGet:
+			h.Obtener(w, r, id)
+
+		case http.MethodPut:
+			h.Actualizar(w, r, id)
+
+		case http.MethodDelete:
+			h.Eliminar(w, r, id)
+
+		default:
+			responderError(
+				w,
+				http.StatusMethodNotAllowed,
+				"método no permitido",
+			)
+		}
+
+		return
+	}
+
+	responderError(
+		w,
+		http.StatusNotFound,
+		"ruta no encontrada",
+	)
+}

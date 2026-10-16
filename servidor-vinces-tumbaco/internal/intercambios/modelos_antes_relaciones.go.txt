@@ -1,0 +1,152 @@
+package intercambios
+
+import "time"
+
+// USUARIO
+type Usuario struct {
+	ID            uint      `gorm:"primaryKey" json:"id"`
+	Nombre        string    `gorm:"size:50;not null" json:"nombre"`
+	Apellido      string    `gorm:"size:50" json:"apellido"`
+	Correo        string    `gorm:"size:100;unique;not null" json:"correo"`
+	Contrasena    string    `gorm:"column:contrasena;size:255" json:"-"`
+	Telefono      string    `gorm:"size:20" json:"telefono"`
+	Direccion     string    `gorm:"size:150" json:"direccion"`
+	Ciudad        string    `gorm:"size:50" json:"ciudad"`
+	FechaRegistro time.Time `json:"fecha_registro"`
+	Estado        string    `gorm:"size:20" json:"estado"`
+	Rol           string    `gorm:"not null" json:"rol"`
+}
+
+// LIBRO
+type Libro struct {
+	ID              uint   `gorm:"primaryKey" json:"id"`
+	ISBN            string `gorm:"size:20;uniqueIndex" json:"isbn"`
+	Titulo          string `gorm:"size:150;not null" json:"titulo"`
+	Descripcion     string `gorm:"type:text" json:"descripcion"`
+	AnioPublicacion int    `json:"anio_publicacion"`
+	Editorial       string `gorm:"size:100" json:"editorial"`
+	Idioma          string `gorm:"size:50" json:"idioma"`
+	Paginas         int    `json:"paginas"`
+
+	// Campos del CRUD anterior.
+	Autor      string `json:"autor"`
+	Genero     string `json:"genero"`
+	Disponible bool   `gorm:"not null;default:true" json:"disponible"`
+	UsuarioID  uint   `json:"usuario_id"`
+}
+
+// AUTOR
+type Autor struct {
+	ID              uint       `gorm:"primaryKey" json:"id"`
+	Nombre          string     `gorm:"size:50" json:"nombre"`
+	Apellido        string     `gorm:"size:50" json:"apellido"`
+	Nacionalidad    string     `gorm:"size:50" json:"nacionalidad"`
+	FechaNacimiento *time.Time `json:"fecha_nacimiento"`
+}
+
+// CATEGORIA
+type Categoria struct {
+	ID          uint   `gorm:"primaryKey" json:"id"`
+	Nombre      string `gorm:"size:50" json:"nombre"`
+	Descripcion string `gorm:"size:200" json:"descripcion"`
+}
+
+// LIBRO_AUTOR
+type LibroAutor struct {
+	LibroID uint   `gorm:"primaryKey" json:"libro_id"`
+	AutorID uint   `gorm:"primaryKey" json:"autor_id"`
+	Rol     string `gorm:"size:30" json:"rol"`
+}
+
+// LIBRO_CATEGORIA
+type LibroCategoria struct {
+	LibroID     uint `gorm:"primaryKey" json:"libro_id"`
+	CategoriaID uint `gorm:"primaryKey" json:"categoria_id"`
+}
+
+// EJEMPLAR_LIBRO
+type EjemplarLibro struct {
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	LibroID        uint      `gorm:"not null" json:"libro_id"`
+	UsuarioID      uint      `gorm:"not null" json:"usuario_id"`
+	EstadoFisico   string    `gorm:"size:30" json:"estado_fisico"`
+	Disponibilidad string    `gorm:"size:30" json:"disponibilidad"`
+	FechaRegistro  time.Time `json:"fecha_registro"`
+	Observaciones  string    `gorm:"type:text" json:"observaciones"`
+}
+
+// SOLICITUD_INTERCAMBIO
+type SolicitudIntercambio struct {
+	ID                   uint      `gorm:"primaryKey" json:"id"`
+	UsuarioSolicitanteID uint      `json:"id_usuario_solicitante"`
+	EjemplarOfrecidoID   uint      `json:"id_ejemplar_ofrecido"`
+	EjemplarDeseadoID    uint      `json:"id_ejemplar_deseado"`
+	FechaSolicitud       time.Time `json:"fecha_solicitud"`
+	Estado               string    `gorm:"size:30" json:"estado"`
+	Mensaje              string    `gorm:"type:text" json:"mensaje"`
+}
+
+// INTERCAMBIO
+type Intercambio struct {
+	ID                uint       `gorm:"primaryKey" json:"id"`
+	UsuarioOfreceID   uint       `json:"id_usuario_ofrece"`
+	UsuarioRecibeID   uint       `json:"id_usuario_recibe"`
+	FechaSolicitud    *time.Time `json:"fecha_solicitud"`
+	FechaConfirmacion *time.Time `json:"fecha_confirmacion"`
+	FechaFinalizacion *time.Time `json:"fecha_finalizacion"`
+	Estado            string     `gorm:"not null;default:pendiente" json:"estado"`
+	Observaciones     string     `gorm:"type:text" json:"observaciones"`
+
+	// Campos que usa el CRUD actual.
+	LibroID       uint      `json:"libro_id"`
+	SolicitanteID uint      `json:"solicitante_id"`
+	Creado        time.Time `gorm:"autoCreateTime" json:"creado"`
+}
+
+// DETALLE_INTERCAMBIO
+type DetalleIntercambio struct {
+	ID                  uint `gorm:"primaryKey" json:"id"`
+	IntercambioID       uint `json:"id_intercambio"`
+	EjemplarEntregadoID uint `json:"id_ejemplar_entregado"`
+	EjemplarRecibidoID  uint `json:"id_ejemplar_recibido"`
+	Cantidad            int  `json:"cantidad"`
+}
+
+// ENTREGA
+type Entrega struct {
+	ID              uint       `gorm:"primaryKey" json:"id"`
+	IntercambioID   uint       `gorm:"uniqueIndex" json:"id_intercambio"`
+	LugarEntrega    string     `gorm:"size:150" json:"lugar_entrega"`
+	FechaProgramada *time.Time `json:"fecha_programada"`
+	FechaReal       *time.Time `json:"fecha_real"`
+	Estado          string     `gorm:"size:30" json:"estado"`
+}
+
+// RESENA
+type Resena struct {
+	ID                uint      `gorm:"primaryKey" json:"id"`
+	IntercambioID     uint      `json:"id_intercambio"`
+	UsuarioAutorID    uint      `json:"id_usuario_autor"`
+	UsuarioEvaluadoID uint      `json:"id_usuario_evaluado"`
+	Puntuacion        int       `json:"puntuacion"`
+	Comentario        string    `gorm:"type:text" json:"comentario"`
+	Fecha             time.Time `json:"fecha"`
+}
+
+// Estados actuales del CRUD de intercambios.
+const (
+	EstadoPendiente = "pendiente"
+	EstadoAceptado  = "aceptado"
+	EstadoEntregado = "entregado"
+	EstadoCancelado = "cancelado"
+)
+
+func EstadoValido(estado string) bool {
+	switch estado {
+	case EstadoPendiente, EstadoAceptado,
+		EstadoEntregado, EstadoCancelado:
+		return true
+	default:
+		return false
+	}
+}
