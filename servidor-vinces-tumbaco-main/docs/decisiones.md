@@ -1,53 +1,91 @@
-\# Decisión de diseño D2: eliminación de libros con préstamos
+# Decisiones técnicas del proyecto
 
+## Plataforma de Intercambio de Libros Usados
 
+### 1. Objetivo
 
-\## Decisión
+Implementar una API REST para gestionar intercambios de libros usados mediante Go, PostgreSQL y GORM, incorporando autenticación JWT, permisos por roles y validaciones de estados.
 
+### 2. Tecnologías utilizadas
 
+- **Go:** desarrollo de la API REST.
+- **PostgreSQL:** almacenamiento de información.
+- **GORM:** conexión y operaciones con la base de datos.
+- **JWT:** autenticación y autorización.
+- **OpenAPI 3.1:** documentación de endpoints.
+- **Redocly:** validación y generación de documentación HTML.
 
-No se permite eliminar un libro cuando tiene préstamos registrados.
+### D1. Matriz de rutas y permisos
 
+| Método | Ruta | Administrador | Usuario | Sin token |
+|---|---|---|---|---|
+| POST | /login | Público | Público | Permitido |
+| GET | /salud | Público | Público | Permitido |
+| GET | /intercambios | Permitido | Permitido | 401 |
+| GET | /intercambios/{id} | Permitido | Permitido | 401 |
+| POST | /intercambios | Permitido | 403 | 401 |
+| PUT | /intercambios/{id} | Permitido | 403 | 401 |
+| PATCH | /intercambios/{id} | Permitido | 403 | 401 |
+| DELETE | /intercambios/{id} | Permitido | 403 | 401 |
 
+### D2. Justificación de los roles
 
-\## Justificación
+Se definieron dos roles: **administrador** y **usuario**.
 
+El administrador puede consultar, crear, actualizar y eliminar intercambios, además de cambiar sus estados.
 
+El usuario puede consultar los intercambios, pero no modificarlos. Esta decisión protege la integridad de los datos y evita cambios no autorizados.
 
-Esta decisión permite conservar la información de los préstamos relacionados con cada libro y evita eliminar un libro que todavía tiene información asociada.
+La autenticación utiliza JWT. Cuando falta un token válido, el servidor responde **HTTP 401**. Cuando un usuario autenticado intenta ejecutar una operación sin permisos, responde **HTTP 403**.
 
+### D3. Transiciones de estado y HTTP 422
 
+Los intercambios tienen cuatro estados:
 
-Cuando se intenta eliminar un libro que tiene préstamos, el sistema responde con el código HTTP 422.
+- **Pendiente:** intercambio registrado.
+- **Aceptado:** intercambio aprobado.
+- **Entregado:** intercambio finalizado.
+- **Cancelado:** intercambio cancelado.
 
+Las transiciones permitidas son:
 
+| Estado actual | Nuevo estado permitido |
+|---|---|
+| Pendiente | Aceptado o cancelado |
+| Aceptado | Entregado o cancelado |
+| Entregado | Ninguno |
+| Cancelado | Ninguno |
 
-\## Alternativa
+**Ejemplo de transición prohibida:**
 
+Intentar cambiar directamente de `pendiente` a `entregado`.
 
+El servidor devuelve **HTTP 422 (Unprocessable Content)** porque la solicitud puede tener un formato JSON correcto, pero el cambio solicitado incumple las reglas del negocio.
 
-La alternativa sería permitir la eliminación del libro y eliminar también sus préstamos relacionados. Esta opción podría provocar pérdida de información de los préstamos, por lo que no se utiliza en este proyecto.
+El cambio de estado se realiza mediante `PATCH /intercambios/{id}`.
 
-## Semana 4 · D1 · Variables de configuración
+### 3. Pruebas realizadas
 
-**Decisión:** `DATABASE_URL` no tiene valor por defecto. `PUERTO` tiene como valor por defecto `8080` y `TIEMPO_ESPERA_SEGUNDOS` tiene como valor por defecto `5`.
+Se implementaron pruebas automatizadas para:
 
-**Por qué:** `DATABASE_URL` es necesaria para conectarse a nuestra base de datos y no sería seguro inventar una conexión. El puerto y el tiempo de espera tienen valores comunes para poder iniciar el servidor sin configurarlos cada vez.
+- Validación de estados.
+- Transiciones permitidas y prohibidas.
+- Inicio de sesión JWT.
+- Autenticación y permisos.
+- Verificación de las seis rutas protegidas sin token.
 
-**Qué descartamos:** No usar un valor por defecto para `DATABASE_URL`, porque podría intentar conectarse a una base de datos incorrecta.
+Las pruebas ejecutadas hasta el momento finalizaron correctamente.
 
-## Semana 4 · D2 · Regla propia de negocio
+### 4. Documentación
 
-**Decisión:** No se permite crear un libro cuando el título y el autor son iguales.
+Se documentaron las rutas de la API con OpenAPI 3.1, incluyendo autenticación JWT y respuestas HTTP 401, 403 y 422.
 
-**Por qué:** Esta regla evita registrar datos incorrectos o poco útiles en la información de los libros. Cuando se incumple, el sistema responde con HTTP 422.
+La validación de Redocly finalizó correctamente y se generó el archivo `docs/api.html`.
 
-**Qué descartamos:** Permitir que el título y el autor sean iguales, porque podría generar registros confusos.
+### 5. Uso de inteligencia artificial
 
-## Semana 4 · D3 · Pruebas
+Se utilizó ChatGPT como herramienta de apoyo para comprender los requisitos del taller, revisar el código, elaborar pruebas y mejorar la documentación. Los cambios se comprobaron mediante comandos y pruebas ejecutadas durante el desarrollo.
 
-**Prueba que no escribimos:** No escribimos una prueba que consulte directamente la base de datos, porque las pruebas de esta semana se diseñaron para validar primero las respuestas del servidor sin depender de PostgreSQL.
+### 6. Conclusión
 
-**Dónde empieza la base:** En el manejador `CrearLibro`, el acceso a la base de datos comienza en la línea 65, con `m.DB.Create(&libro)`. Antes de esa línea se validan los datos, por eso las pruebas de error no necesitan acceder a la base de datos.
-
-**Qué haría falta para probarla:** Sería necesario levantar una base de datos de prueba y preparar datos para comprobar las consultas directamente.
+La Plataforma de Intercambio de Libros Usados incorpora autenticación JWT, control de permisos por roles y reglas para los cambios de estado. Estas decisiones contribuyen a la seguridad y consistencia de las operaciones de la API.
