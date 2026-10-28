@@ -1,0 +1,10 @@
+
+# Configuracion de Redocly
+# Plataforma de Intercambio de Libros Usados
+
+extends:
+  - recommended
+
+rules:
+  info-license: off
+  no-server-example.com: off
