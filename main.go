@@ -84,7 +84,11 @@ func main() {
 	}
 
 	// CAPA 1: Repository.
-	repositorio := repository.NuevoIntercambiosRepository(db)
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatalf("Error al obtener sql.DB: %v", err)
+	}
+	repositorio := repository.NuevoIntercambiosRepository(db, sqlDB)
 
 	// CAPA 2: Service.
 	servicio := services.NuevoIntercambiosService(repositorio)
