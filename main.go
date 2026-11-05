@@ -4,37 +4,60 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
+	"net/url"
 
+	"github.com/uleam-web-2026-2/KEMA/internal/config"
 	"github.com/uleam-web-2026-2/KEMA/internal/intercambios"
+	"github.com/uleam-web-2026-2/KEMA/internal/repository"
+	"github.com/uleam-web-2026-2/KEMA/internal/services"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-func main() {
-
-	// ==========================================
-	// CONEXION A POSTGRESQL
-	// ==========================================
-
-	dsn := os.Getenv("DATABASE_URL")
-
-	if dsn == "" {
-		log.Fatal("Debes configurar DATABASE_URL antes de iniciar el servidor")
+// validarBaseDatos comprueba que la aplicación utilice
+// exclusivamente la base de datos de recuperación.
+func validarBaseDatos(databaseURL string) error {
+	u, err := url.Parse(databaseURL)
+	if err != nil {
+		return fmt.Errorf("la dirección de PostgreSQL no es válida")
 	}
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1" {
+		return fmt.Errorf("la conexión debe utilizar localhost o 127.0.0.1")
+	}
 
+	if u.Port() != "5434" {
+		return fmt.Errorf("por seguridad, se requiere el puerto 5434")
+	}
+
+	if u.Path != "/intercambio_prueba" {
+		return fmt.Errorf("por seguridad, se requiere la base de datos intercambio_prueba")
+	}
+
+	return nil
+}
+
+func main() {
+	// Cargar configuración.
+	cfg, err := config.Cargar()
+	if err != nil {
+		log.Fatal("Error de configuración: ", err)
+	}
+
+	// Verificar la base de datos antes de conectarse.
+	if err := validarBaseDatos(cfg.DatabaseURL); err != nil {
+		log.Fatal("Conexión bloqueada: ", err)
+	}
+
+	// Conectar con PostgreSQL.
+	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{})
 	if err != nil {
 		log.Fatal("Error al conectar con PostgreSQL: ", err)
 	}
 
-	fmt.Println("Conexion con PostgreSQL correcta")
+	fmt.Println("Conexión con PostgreSQL correcta")
 
-	// ==========================================
-	// MIGRACIONES DE LAS 12 ENTIDADES
-	// ==========================================
-
+	// Crear o actualizar las tablas de las 12 entidades.
 	err = db.AutoMigrate(
 		&intercambios.Usuario{},
 		&intercambios.Libro{},
@@ -49,101 +72,55 @@ func main() {
 		&intercambios.Entrega{},
 		&intercambios.Resena{},
 	)
-
 	if err != nil {
-		log.Fatal("Error al crear las tablas: ", err)
+		log.Fatal("Error al preparar las tablas: ", err)
 	}
 
 	fmt.Println("Tablas preparadas correctamente")
 
-	// ==========================================
-	// DATOS INICIALES
-	// ==========================================
-
+	// Insertar datos iniciales.
 	if err := intercambios.Sembrar(db); err != nil {
 		log.Fatal("Error al insertar datos iniciales: ", err)
 	}
 
-	fmt.Println("Datos iniciales preparados correctamente")
+	// CAPA 1: Repository.
+	repositorio := repository.NuevoIntercambiosRepository(db)
 
-	// ==========================================
-	// VALIDAR CONFIGURACION JWT
-	// ==========================================
+	// CAPA 2: Service.
+	servicio := services.NuevoIntercambiosService(repositorio)
 
-	if len(os.Getenv("JWT_SECRET")) < 32 {
-		log.Fatal("JWT_SECRET debe tener al menos 32 caracteres")
-	}
-
-	if os.Getenv("DEMO_ADMIN_PASSWORD") == "" {
-		log.Fatal("Debes configurar DEMO_ADMIN_PASSWORD")
-	}
-
-	if os.Getenv("DEMO_USER_PASSWORD") == "" {
-		log.Fatal("Debes configurar DEMO_USER_PASSWORD")
-	}
-
-	fmt.Println("Configuracion JWT correcta")
-
-	// ==========================================
-	// HANDLER DE INTERCAMBIOS
-	// ==========================================
-
+	// CAPA 3: Handler.
 	handler := &intercambios.Handler{
-		DB: db,
+		Servicio: servicio,
 	}
 
-	// ==========================================
-	// RUTA PRINCIPAL
-	// ==========================================
-
+	// Ruta principal.
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
 		if r.URL.Path != "/" {
 			http.NotFound(w, r)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-
-		fmt.Fprint(
-			w,
-			`{"mensaje":"Servidor de intercambio de libros funcionando"}`,
-		)
+		fmt.Fprint(w, `{"mensaje":"Servidor de intercambio de libros funcionando"}`)
 	})
 
-	// ==========================================
-	// RUTA DE SALUD
-	// ==========================================
-
+	// Ruta de salud.
 	http.HandleFunc("/salud", func(w http.ResponseWriter, r *http.Request) {
-
 		w.Header().Set("Content-Type", "application/json")
-
-		fmt.Fprint(
-			w,
-			`{"estado":"ok"}`,
-		)
+		fmt.Fprint(w, `{"estado":"ok"}`)
 	})
 
-	// ==========================================
-	// INICIO DE SESION JWT
-	// ==========================================
-
+	// Inicio de sesión.
 	http.HandleFunc("/login", intercambios.Login)
 
-	// ==========================================
-	// CRUD DE INTERCAMBIOS CON PERMISOS
-	// ==========================================
-
+	// Rutas de intercambios.
 	rutasIntercambios := func(w http.ResponseWriter, r *http.Request) {
-
 		switch r.Method {
-
 		case http.MethodGet:
-			// Administrador y usuario pueden consultar.
 			intercambios.Proteger(
 				handler.Rutas,
-				"admin",
+				"administrador",
 				"usuario",
 			)(w, r)
 
@@ -152,10 +129,9 @@ func main() {
 			http.MethodPatch,
 			http.MethodDelete:
 
-			// Solo el administrador puede modificar.
 			intercambios.Proteger(
 				handler.Rutas,
-				"admin",
+				"administrador",
 			)(w, r)
 
 		default:
@@ -163,60 +139,21 @@ func main() {
 		}
 	}
 
-	http.HandleFunc(
-		"/intercambios",
-		rutasIntercambios,
-	)
+	http.HandleFunc("/intercambios", rutasIntercambios)
+	http.HandleFunc("/intercambios/", rutasIntercambios)
 
-	http.HandleFunc(
-		"/intercambios/",
-		rutasIntercambios,
-	)
+	// Configurar servidor HTTP.
+	servidor := &http.Server{
+		Addr:         ":" + cfg.Puerto,
+		ReadTimeout:  cfg.TiempoEspera,
+		WriteTimeout: cfg.TiempoEspera,
+		Handler:      http.DefaultServeMux,
+	}
 
-	// ==========================================
-	// INICIAR SERVIDOR
-	// ==========================================
+	fmt.Println("Servidor iniciado en el puerto:", cfg.Puerto)
 
-	fmt.Println("")
-	fmt.Println("==========================================")
-	fmt.Println(" PLATAFORMA DE INTERCAMBIO DE LIBROS")
-	fmt.Println("==========================================")
-	fmt.Println("")
-	fmt.Println("Servidor: http://localhost:8080")
-	fmt.Println("")
-	fmt.Println("Entidades del modelo:")
-	fmt.Println("1. Usuario")
-	fmt.Println("2. Libro")
-	fmt.Println("3. Autor")
-	fmt.Println("4. Categoria")
-	fmt.Println("5. LibroAutor")
-	fmt.Println("6. LibroCategoria")
-	fmt.Println("7. EjemplarLibro")
-	fmt.Println("8. SolicitudIntercambio")
-	fmt.Println("9. Intercambio")
-	fmt.Println("10. DetalleIntercambio")
-	fmt.Println("11. Entrega")
-	fmt.Println("12. Resena")
-	fmt.Println("")
-	fmt.Println("Endpoints disponibles:")
-	fmt.Println("POST   /login")
-	fmt.Println("GET    /intercambios")
-	fmt.Println("GET    /intercambios/{id}")
-	fmt.Println("POST   /intercambios")
-	fmt.Println("PUT    /intercambios/{id}")
-	fmt.Println("PATCH  /intercambios/{id}")
-	fmt.Println("DELETE /intercambios/{id}")
-	fmt.Println("GET    /salud")
-	fmt.Println("")
-	fmt.Println("Permisos:")
-	fmt.Println("GET: administrador y usuario")
-	fmt.Println("POST, PUT, PATCH, DELETE: solo administrador")
-	fmt.Println("")
-	fmt.Println("Servidor iniciado correctamente")
-
-	err = http.ListenAndServe(":8080", nil)
-
-	if err != nil {
+	// Iniciar servidor.
+	if err := servidor.ListenAndServe(); err != nil {
 		log.Fatal("Error al iniciar el servidor: ", err)
 	}
 }

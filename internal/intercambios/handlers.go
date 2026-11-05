@@ -10,388 +10,278 @@ import (
 	"gorm.io/gorm"
 )
 
-// Handler permite trabajar con la base de datos.
-type Handler struct {
-	DB *gorm.DB
+// IntercambiosService define las operaciones que necesita el Handler.
+// El Handler no accede directamente a PostgreSQL.
+type IntercambiosService interface {
+	Listar() ([]Intercambio, error)
+	Obtener(id uint) (*Intercambio, error)
+	Crear(input CrearIntercambioInput) (*Intercambio, error)
+	Actualizar(id uint, input ActualizarIntercambioInput) (*Intercambio, error)
+	CambiarEstado(id uint, nuevoEstado string) (*Intercambio, error)
+	Eliminar(id uint) error
 }
 
-// responderJSON devuelve una respuesta JSON.
-func responderJSON(w http.ResponseWriter, codigo int, datos interface{}) {
+// Handler recibe las peticiones HTTP.
+type Handler struct {
+	Servicio IntercambiosService
+}
+
+// Datos necesarios para crear un intercambio.
+type CrearIntercambioInput struct {
+	UsuarioSolicitanteID uint   `json:"id_usuario_solicitante"`
+	EjemplarOfrecidoID   uint   `json:"id_ejemplar_ofrecido"`
+	EjemplarDeseadoID    uint   `json:"id_ejemplar_deseado"`
+	Observaciones        string `json:"observaciones"`
+}
+
+// Datos necesarios para actualizar un intercambio.
+type ActualizarIntercambioInput struct {
+	UsuarioOfreceID uint   `json:"id_usuario_ofrece"`
+	UsuarioRecibeID uint   `json:"id_usuario_recibe"`
+	Observaciones   string `json:"observaciones"`
+}
+
+// Datos necesarios para cambiar el estado.
+type solicitudEstado struct {
+	Estado string `json:"estado"`
+}
+
+// Responder solicitudes con formato JSON.
+func responderJSON(w http.ResponseWriter, codigo int, datos any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(codigo)
 	_ = json.NewEncoder(w).Encode(datos)
 }
 
-// responderError devuelve un mensaje de error.
+// Responder errores.
 func responderError(w http.ResponseWriter, codigo int, mensaje string) {
 	responderJSON(w, codigo, map[string]string{
 		"error": mensaje,
 	})
 }
 
-// GET /intercambios
+// Listar todos los intercambios.
 func (h *Handler) Listar(w http.ResponseWriter, r *http.Request) {
-	var lista []Intercambio
+	lista, err := h.Servicio.Listar()
 
-	if err := h.DB.Order("id ASC").Find(&lista).Error; err != nil {
+	if err != nil {
 		responderError(w, http.StatusInternalServerError,
-			"no se pudieron obtener los intercambios")
+			"No se pudieron consultar los intercambios")
 		return
 	}
 
 	responderJSON(w, http.StatusOK, lista)
 }
 
-// GET /intercambios/{id}
+// Obtener un intercambio por su identificador.
 func (h *Handler) Obtener(w http.ResponseWriter, r *http.Request, id uint) {
-	var intercambio Intercambio
+	intercambio, err := h.Servicio.Obtener(id)
 
-	if err := h.DB.First(&intercambio, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			responderError(w, http.StatusNotFound,
-				"intercambio no encontrado")
-			return
-		}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		responderError(w, http.StatusNotFound,
+			"Intercambio no encontrado")
+		return
+	}
 
+	if err != nil {
 		responderError(w, http.StatusInternalServerError,
-			"error al consultar el intercambio")
+			"No se pudo consultar el intercambio")
 		return
 	}
 
 	responderJSON(w, http.StatusOK, intercambio)
 }
 
-// ValidarUsuarios comprueba el libro, propietario y solicitante.
-func (h *Handler) ValidarUsuarios(
-	libroID uint,
-	solicitanteID uint,
-) (uint, int, string) {
+// Crear un intercambio.
+func (h *Handler) Crear(w http.ResponseWriter, r *http.Request) {
+	var solicitud CrearIntercambioInput
 
-	if libroID == 0 {
-		return 0, http.StatusBadRequest, "libro_id es obligatorio"
+	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
+		responderError(w, http.StatusBadRequest,
+			"El cuerpo de la solicitud no es válido")
+		return
 	}
 
-	if solicitanteID == 0 {
-		return 0, http.StatusBadRequest, "solicitante_id es obligatorio"
-	}
+	intercambio, err := h.Servicio.Crear(solicitud)
 
-	var libro Libro
+	if err != nil {
+		mensaje := err.Error()
+		codigo := http.StatusBadRequest
 
-	if err := h.DB.First(&libro, libroID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, http.StatusBadRequest, "el libro no existe"
+		if strings.Contains(mensaje, "no está disponible") {
+			codigo = http.StatusConflict
 		}
-		return 0, http.StatusInternalServerError, "error al consultar el libro"
+
+		responderError(w, codigo, mensaje)
+		return
 	}
 
-	if libro.UsuarioID == 0 {
-		return 0, http.StatusBadRequest, "el libro no tiene propietario asignado"
-	}
-
-	var propietario Usuario
-
-	if err := h.DB.First(&propietario, libro.UsuarioID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, http.StatusBadRequest, "el propietario no existe"
-		}
-		return 0, http.StatusInternalServerError, "error al consultar el propietario"
-	}
-
-	var solicitante Usuario
-
-	if err := h.DB.First(&solicitante, solicitanteID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return 0, http.StatusBadRequest, "el solicitante no existe"
-		}
-		return 0, http.StatusInternalServerError, "error al consultar el solicitante"
-	}
-
-	if libro.UsuarioID == solicitanteID {
-		return 0, http.StatusBadRequest, "no puedes solicitar tu propio libro"
-	}
-
-	return libro.UsuarioID, 0, ""
+	responderJSON(w, http.StatusCreated, intercambio)
 }
 
-// TransicionPermitida controla los cambios de estado.
+// Actualizar los datos de un intercambio pendiente.
+func (h *Handler) Actualizar(w http.ResponseWriter, r *http.Request, id uint) {
+	var solicitud ActualizarIntercambioInput
+
+	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
+		responderError(w, http.StatusBadRequest,
+			"El cuerpo de la solicitud no es válido")
+		return
+	}
+
+	intercambio, err := h.Servicio.Actualizar(id, solicitud)
+
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		responderError(w, http.StatusNotFound,
+			"Intercambio no encontrado")
+		return
+	}
+
+	if err != nil {
+		codigo := http.StatusBadRequest
+
+		if strings.Contains(err.Error(), "pendientes") {
+			codigo = http.StatusConflict
+		}
+
+		responderError(w, codigo, err.Error())
+		return
+	}
+
+	responderJSON(w, http.StatusOK, intercambio)
+}
+
+// Verificar si un cambio de estado está permitido.
 func TransicionPermitida(actual, nuevo string) bool {
 	switch actual {
 	case EstadoPendiente:
-		return nuevo == EstadoAceptado ||
-			nuevo == EstadoCancelado
+		return nuevo == EstadoAceptado || nuevo == EstadoCancelado
 
 	case EstadoAceptado:
-		return nuevo == EstadoEntregado ||
-			nuevo == EstadoCancelado
+		return nuevo == EstadoEntregado || nuevo == EstadoCancelado
 
 	default:
 		return false
 	}
 }
 
-// POST /intercambios
-func (h *Handler) Crear(w http.ResponseWriter, r *http.Request) {
-	var entrada struct {
-		LibroID       uint   `json:"libro_id"`
-		SolicitanteID uint   `json:"solicitante_id"`
-		Estado        string `json:"estado"`
-	}
+// Cambiar el estado de un intercambio.
+func (h *Handler) CambiarEstado(w http.ResponseWriter, r *http.Request, id uint) {
+	var solicitud solicitudEstado
 
-	if err := json.NewDecoder(r.Body).Decode(&entrada); err != nil {
-		responderError(w, http.StatusBadRequest, "JSON inválido")
-		return
-	}
-
-	if entrada.Estado == "" {
-		entrada.Estado = EstadoPendiente
-	}
-
-	// Todo intercambio nuevo debe comenzar pendiente.
-	if entrada.Estado != EstadoPendiente {
-		responderError(w, http.StatusUnprocessableEntity,
-			"un intercambio nuevo debe comenzar pendiente")
-		return
-	}
-
-	propietarioID, codigo, mensaje := h.ValidarUsuarios(
-		entrada.LibroID,
-		entrada.SolicitanteID,
-	)
-
-	if codigo != 0 {
-		responderError(w, codigo, mensaje)
-		return
-	}
-
-	var libro Libro
-
-	if err := h.DB.First(&libro, entrada.LibroID).Error; err != nil {
-		responderError(w, http.StatusInternalServerError,
-			"error al consultar el libro")
-		return
-	}
-
-	if !libro.Disponible {
+	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
 		responderError(w, http.StatusBadRequest,
-			"el libro no está disponible")
+			"El cuerpo de la solicitud no es válido")
 		return
 	}
 
-	nuevo := Intercambio{
-		LibroID:         entrada.LibroID,
-		SolicitanteID:   entrada.SolicitanteID,
-		UsuarioOfreceID: propietarioID,
-		UsuarioRecibeID: entrada.SolicitanteID,
-		Estado:          EstadoPendiente,
-	}
-
-	if err := h.DB.Create(&nuevo).Error; err != nil {
-		responderError(w, http.StatusInternalServerError,
-			"no se pudo crear el intercambio")
+	if !EstadoValido(solicitud.Estado) {
+		responderError(w, http.StatusBadRequest,
+			"El estado indicado no es válido")
 		return
 	}
 
-	responderJSON(w, http.StatusCreated, nuevo)
-}
+	intercambio, err := h.Servicio.CambiarEstado(id, solicitud.Estado)
 
-// PUT /intercambios/{id}
-func (h *Handler) Actualizar(
-	w http.ResponseWriter,
-	r *http.Request,
-	id uint,
-) {
-	var intercambio Intercambio
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		responderError(w, http.StatusNotFound,
+			"Intercambio no encontrado")
+		return
+	}
 
-	if err := h.DB.First(&intercambio, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			responderError(w, http.StatusNotFound,
-				"intercambio no encontrado")
-			return
+	if err != nil {
+		codigo := http.StatusInternalServerError
+
+		if strings.Contains(err.Error(), "transición") {
+			codigo = http.StatusConflict
 		}
 
-		responderError(w, http.StatusInternalServerError,
-			"error al consultar el intercambio")
-		return
-	}
-
-	var entrada struct {
-		LibroID       uint   `json:"libro_id"`
-		SolicitanteID uint   `json:"solicitante_id"`
-		Estado        string `json:"estado"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&entrada); err != nil {
-		responderError(w, http.StatusBadRequest, "JSON inválido")
-		return
-	}
-
-	if !EstadoValido(entrada.Estado) {
-		responderError(w, http.StatusUnprocessableEntity,
-			"estado no válido")
-		return
-	}
-
-	if entrada.Estado != intercambio.Estado &&
-		!TransicionPermitida(intercambio.Estado, entrada.Estado) {
-		responderError(w, http.StatusUnprocessableEntity,
-			"transición de estado no permitida")
-		return
-	}
-
-	propietarioID, codigo, mensaje := h.ValidarUsuarios(
-		entrada.LibroID,
-		entrada.SolicitanteID,
-	)
-
-	if codigo != 0 {
-		responderError(w, codigo, mensaje)
-		return
-	}
-
-	intercambio.LibroID = entrada.LibroID
-	intercambio.SolicitanteID = entrada.SolicitanteID
-	intercambio.UsuarioOfreceID = propietarioID
-	intercambio.UsuarioRecibeID = entrada.SolicitanteID
-
-	if err := h.DB.Save(&intercambio).Error; err != nil {
-		responderError(w, http.StatusInternalServerError,
-			"no se pudo actualizar el intercambio")
+		responderError(w, codigo, err.Error())
 		return
 	}
 
 	responderJSON(w, http.StatusOK, intercambio)
 }
 
-// PATCH /intercambios/{id}
-// Modifica únicamente el estado del intercambio.
-func (h *Handler) CambiarEstado(
-	w http.ResponseWriter,
-	r *http.Request,
-	id uint,
-) {
-	var intercambio Intercambio
+// Eliminar un intercambio y su detalle.
+func (h *Handler) Eliminar(w http.ResponseWriter, r *http.Request, id uint) {
+	err := h.Servicio.Eliminar(id)
 
-	if err := h.DB.First(&intercambio, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			responderError(w, http.StatusNotFound,
-				"intercambio no encontrado")
-			return
-		}
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		responderError(w, http.StatusNotFound,
+			"Intercambio no encontrado")
+		return
+	}
 
+	if err != nil {
 		responderError(w, http.StatusInternalServerError,
-			"error al consultar el intercambio")
-		return
-	}
-
-	var entrada struct {
-		Estado string `json:"estado"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&entrada); err != nil {
-		responderError(w, http.StatusBadRequest, "JSON inválido")
-		return
-	}
-
-	if !EstadoValido(entrada.Estado) {
-		responderError(w, http.StatusUnprocessableEntity,
-			"estado no válido")
-		return
-	}
-
-	if !TransicionPermitida(intercambio.Estado, entrada.Estado) {
-		responderError(w, http.StatusUnprocessableEntity,
-			"transición de estado no permitida")
-		return
-	}
-
-	// Solo actualiza la columna estado.
-	if err := h.DB.Model(&intercambio).
-		Update("estado", entrada.Estado).Error; err != nil {
-		responderError(w, http.StatusInternalServerError,
-			"no se pudo actualizar el estado")
-		return
-	}
-
-	intercambio.Estado = entrada.Estado
-	responderJSON(w, http.StatusOK, intercambio)
-}
-
-// DELETE /intercambios/{id}
-func (h *Handler) Eliminar(
-	w http.ResponseWriter,
-	r *http.Request,
-	id uint,
-) {
-	var intercambio Intercambio
-
-	if err := h.DB.First(&intercambio, id).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			responderError(w, http.StatusNotFound,
-				"intercambio no encontrado")
-			return
-		}
-
-		responderError(w, http.StatusInternalServerError,
-			"error al consultar el intercambio")
-		return
-	}
-
-	if err := h.DB.Delete(&intercambio).Error; err != nil {
-		responderError(w, http.StatusInternalServerError,
-			"no se pudo eliminar el intercambio")
+			"No se pudo eliminar el intercambio")
 		return
 	}
 
 	responderJSON(w, http.StatusOK, map[string]string{
-		"mensaje": "intercambio eliminado correctamente",
+		"mensaje": "Intercambio eliminado correctamente",
 	})
 }
 
-// RUTAS
+// Configurar las rutas de intercambios.
 func (h *Handler) Rutas(w http.ResponseWriter, r *http.Request) {
-	ruta := strings.Trim(r.URL.Path, "/")
-	partes := strings.Split(ruta, "/")
+	if h.Servicio == nil {
+		responderError(w, http.StatusInternalServerError,
+			"El servicio de intercambios no está configurado")
+		return
+	}
 
-	// /intercambios
-	if len(partes) == 1 && partes[0] == "intercambios" {
+	if r.URL.Path == "/intercambios" ||
+		r.URL.Path == "/intercambios/" {
+
 		switch r.Method {
 		case http.MethodGet:
 			h.Listar(w, r)
+
 		case http.MethodPost:
 			h.Crear(w, r)
+
 		default:
 			responderError(w, http.StatusMethodNotAllowed,
-				"método no permitido")
+				"Método no permitido")
 		}
+
 		return
 	}
 
-	// /intercambios/{id}
-	if len(partes) == 2 && partes[0] == "intercambios" {
-		numero, err := strconv.ParseUint(partes[1], 10, 64)
+	partes := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
 
-		if err != nil || numero == 0 {
-			responderError(w, http.StatusBadRequest, "ID inválido")
-			return
-		}
-
-		id := uint(numero)
-
-		switch r.Method {
-		case http.MethodGet:
-			h.Obtener(w, r, id)
-		case http.MethodPut:
-			h.Actualizar(w, r, id)
-		case http.MethodPatch:
-			h.CambiarEstado(w, r, id)
-		case http.MethodDelete:
-			h.Eliminar(w, r, id)
-		default:
-			responderError(w, http.StatusMethodNotAllowed,
-				"método no permitido")
-		}
+	if len(partes) != 2 || partes[0] != "intercambios" {
+		http.NotFound(w, r)
 		return
 	}
 
-	responderError(w, http.StatusNotFound, "ruta no encontrada")
+	id64, err := strconv.ParseUint(partes[1], 10, 32)
+
+	if err != nil || id64 == 0 {
+		responderError(w, http.StatusBadRequest,
+			"El identificador no es válido")
+		return
+	}
+
+	id := uint(id64)
+
+	switch r.Method {
+	case http.MethodGet:
+		h.Obtener(w, r, id)
+
+	case http.MethodPut:
+		h.Actualizar(w, r, id)
+
+	case http.MethodPatch:
+		h.CambiarEstado(w, r, id)
+
+	case http.MethodDelete:
+		h.Eliminar(w, r, id)
+
+	default:
+		responderError(w, http.StatusMethodNotAllowed,
+			"Método no permitido")
+	}
 }

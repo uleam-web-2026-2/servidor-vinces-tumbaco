@@ -2,76 +2,108 @@ openapi: 3.1.0
 
 info:
   title: Plataforma de Intercambio de Libros Usados
-  version: 1.1.0
-  description: >
+  version: 2.1.0
+  description: |
     API REST para gestionar intercambios de libros usados.
-    Utiliza JWT para autenticación y autorización por roles.
+    Utiliza autenticación JWT y autorización mediante roles.
+    Documenta las doce entidades del sistema.
 
 servers:
   - url: http://localhost:8080
+    description: Servidor local
 
 tags:
-  - name: Autenticación
-    description: Inicio de sesión
+  - name: Autenticacion
+    description: Inicio de sesión y disponibilidad del servidor
   - name: Intercambios
     description: Gestión de intercambios de libros
 
 paths:
+  /:
+    get:
+      operationId: obtenerBienvenida
+      tags:
+        - Autenticacion
+      summary: Mensaje de bienvenida
+      security: []
+      responses:
+        "200":
+          description: Servidor funcionando
+        "400":
+          $ref: "#/components/responses/Error400"
+
+  /salud:
+    get:
+      operationId: verificarSalud
+      tags:
+        - Autenticacion
+      summary: Verificar disponibilidad del servidor
+      security: []
+      responses:
+        "200":
+          description: Servidor disponible
+        "400":
+          $ref: "#/components/responses/Error400"
+
   /login:
     post:
-      tags:
-        - Autenticación
       operationId: iniciarSesion
+      tags:
+        - Autenticacion
       summary: Iniciar sesión
-      description: >
-        Permite iniciar sesión con usuarios de demostración.
-        Devuelve un token JWT válido durante 30 minutos.
+      description: |
+        Devuelve un token JWT para acceder a las rutas protegidas.
+
+        Usuarios de demostración:
+        - kenyis_admin: rol administrador.
+        - majo_user: rol usuario.
+
+        Las contraseñas se configuran mediante variables de entorno
+        y no se publican en esta documentación.
       security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - usuario
-                - clave
-              properties:
-                usuario:
-                  type: string
-                  example: admin
-                clave:
-                  type: string
-                  format: password
+              $ref: "#/components/schemas/LoginInput"
+            examples:
+              administrador:
+                summary: Inicio de sesión del administrador
+                value:
+                  usuario: kenyis_admin
+                  clave: "********"
+              usuario:
+                summary: Inicio de sesión del usuario
+                value:
+                  usuario: majo_user
+                  clave: "********"
       responses:
         "200":
           description: Inicio de sesión correcto
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - token
-                properties:
-                  token:
-                    type: string
+                $ref: "#/components/schemas/LoginRespuesta"
         "400":
           $ref: "#/components/responses/Error400"
         "401":
           $ref: "#/components/responses/Error401"
+        "500":
+          $ref: "#/components/responses/Error500"
 
   /intercambios:
     get:
+      operationId: listarIntercambios
       tags:
         - Intercambios
-      operationId: listarIntercambios
       summary: Listar intercambios
-      description: Disponible para administradores y usuarios autenticados.
+      description: Disponible para los roles administrador y usuario autenticados.
       security:
         - BearerAuth: []
       responses:
         "200":
-          description: Lista de intercambios registrados
+          description: Lista de intercambios
           content:
             application/json:
               schema:
@@ -82,15 +114,15 @@ paths:
           $ref: "#/components/responses/Error401"
         "403":
           $ref: "#/components/responses/Error403"
+        "500":
+          $ref: "#/components/responses/Error500"
 
     post:
+      operationId: crearIntercambio
       tags:
         - Intercambios
-      operationId: crearIntercambio
       summary: Crear un intercambio
-      description: >
-        Solo los administradores pueden crear intercambios.
-        Todo intercambio nuevo comienza en estado pendiente.
+      description: Solo disponible para usuarios con el rol administrador.
       security:
         - BearerAuth: []
       requestBody:
@@ -98,10 +130,10 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IntercambioNuevo"
+              $ref: "#/components/schemas/CrearIntercambioInput"
       responses:
         "201":
-          description: Intercambio creado correctamente
+          description: Intercambio creado
           content:
             application/json:
               schema:
@@ -112,8 +144,8 @@ paths:
           $ref: "#/components/responses/Error401"
         "403":
           $ref: "#/components/responses/Error403"
-        "422":
-          $ref: "#/components/responses/Error422"
+        "409":
+          $ref: "#/components/responses/Error409"
 
   /intercambios/{id}:
     parameters:
@@ -126,11 +158,10 @@ paths:
           minimum: 1
 
     get:
+      operationId: obtenerIntercambio
       tags:
         - Intercambios
-      operationId: obtenerIntercambio
       summary: Consultar un intercambio
-      description: Disponible para administradores y usuarios autenticados.
       security:
         - BearerAuth: []
       responses:
@@ -150,13 +181,11 @@ paths:
           $ref: "#/components/responses/Error404"
 
     put:
+      operationId: actualizarIntercambio
       tags:
         - Intercambios
-      operationId: actualizarIntercambio
       summary: Actualizar un intercambio
-      description: >
-        Solo administradores. Actualiza el libro y el solicitante
-         del intercambio. El estado se modifica mediante PATCH.
+      description: Solo disponible para usuarios con el rol administrador.
       security:
         - BearerAuth: []
       requestBody:
@@ -164,7 +193,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/IntercambioActualizacion"
+              $ref: "#/components/schemas/ActualizarIntercambioInput"
       responses:
         "200":
           description: Intercambio actualizado
@@ -180,18 +209,22 @@ paths:
           $ref: "#/components/responses/Error403"
         "404":
           $ref: "#/components/responses/Error404"
-        "422":
-          $ref: "#/components/responses/Error422"
+        "409":
+          $ref: "#/components/responses/Error409"
 
     patch:
+      operationId: cambiarEstadoIntercambio
       tags:
         - Intercambios
-      operationId: cambiarEstadoIntercambio
       summary: Cambiar estado de un intercambio
-      description: >
-        Solo administradores. Permite pendiente a aceptado
-        o cancelado, y aceptado a entregado o cancelado.
-        Las transiciones prohibidas devuelven HTTP 422.
+      description: |
+        Solo disponible para usuarios con el rol administrador.
+
+        Transiciones permitidas:
+        - pendiente a aceptado o cancelado.
+        - aceptado a entregado o cancelado.
+
+        Las transiciones prohibidas devuelven HTTP 409.
       security:
         - BearerAuth: []
       requestBody:
@@ -199,15 +232,10 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - estado
-              properties:
-                estado:
-                  $ref: "#/components/schemas/EstadoIntercambio"
+              $ref: "#/components/schemas/CambiarEstadoInput"
       responses:
         "200":
-          description: Estado actualizado correctamente
+          description: Estado actualizado
           content:
             application/json:
               schema:
@@ -220,50 +248,34 @@ paths:
           $ref: "#/components/responses/Error403"
         "404":
           $ref: "#/components/responses/Error404"
-        "422":
-          $ref: "#/components/responses/Error422"
+        "409":
+          $ref: "#/components/responses/Error409"
+        "500":
+          $ref: "#/components/responses/Error500"
 
     delete:
+      operationId: eliminarIntercambio
       tags:
         - Intercambios
-      operationId: eliminarIntercambio
       summary: Eliminar un intercambio
-      description: Solo administradores.
+      description: Solo disponible para usuarios con el rol administrador.
       security:
         - BearerAuth: []
       responses:
         "200":
-          description: Intercambio eliminado correctamente
+          description: Intercambio eliminado
           content:
             application/json:
               schema:
-                type: object
-                required:
-                  - mensaje
-                properties:
-                  mensaje:
-                    type: string
-        "400":
-          $ref: "#/components/responses/Error400"
+                $ref: "#/components/schemas/MensajeRespuesta"
         "401":
           $ref: "#/components/responses/Error401"
         "403":
           $ref: "#/components/responses/Error403"
         "404":
           $ref: "#/components/responses/Error404"
-
-  /salud:
-    get:
-      tags:
-        - Autenticación
-      operationId: verificarSalud
-      summary: Verificar disponibilidad del servidor
-      security: []
-      responses:
-        "200":
-          description: Servidor disponible
-        "405":
-          description: Método HTTP no permitido
+        "500":
+          $ref: "#/components/responses/Error500"
 
 components:
   securitySchemes:
@@ -271,42 +283,268 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >
-        Introducir el token JWT obtenido mediante POST /login.
+      description: Token obtenido mediante POST /login.
 
   schemas:
+    LoginInput:
+      type: object
+      required:
+        - usuario
+        - clave
+      properties:
+        usuario:
+          type: string
+          example: kenyis_admin
+        clave:
+          type: string
+          format: password
+
+    LoginRespuesta:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Token JWT de autenticación
+
+    CrearIntercambioInput:
+      type: object
+      required:
+        - id_usuario_solicitante
+        - id_ejemplar_ofrecido
+        - id_ejemplar_deseado
+      properties:
+        id_usuario_solicitante:
+          type: integer
+          minimum: 1
+        id_ejemplar_ofrecido:
+          type: integer
+          minimum: 1
+        id_ejemplar_deseado:
+          type: integer
+          minimum: 1
+        observaciones:
+          type: string
+
+    ActualizarIntercambioInput:
+      type: object
+      required:
+        - id_usuario_ofrece
+        - id_usuario_recibe
+      properties:
+        id_usuario_ofrece:
+          type: integer
+          minimum: 1
+        id_usuario_recibe:
+          type: integer
+          minimum: 1
+        observaciones:
+          type: string
+
+    CambiarEstadoInput:
+      type: object
+      required:
+        - estado
+      properties:
+        estado:
+          $ref: "#/components/schemas/EstadoIntercambio"
+
     EstadoIntercambio:
       type: string
-      description: Estado actual del intercambio
       enum:
         - pendiente
         - aceptado
         - entregado
         - cancelado
 
-    Intercambio:
+    Usuario:
       type: object
-      required:
-        - id
-        - libro_id
-        - solicitante_id
-        - estado
+      description: Usuario registrado. La contraseña no se expone.
       properties:
-        id:
+        id_usuario:
           type: integer
-          readOnly: true
+        nombre:
+          type: string
+          maxLength: 50
+        apellido:
+          type: string
+          maxLength: 50
+        correo:
+          type: string
+          format: email
+        telefono:
+          type: string
+          maxLength: 20
+        direccion:
+          type: string
+          maxLength: 150
+        ciudad:
+          type: string
+          maxLength: 50
+        fecha_registro:
+          type: string
+          format: date-time
+        estado:
+          type: string
+          maxLength: 20
+        rol:
+          type: string
+          maxLength: 20
+          enum:
+            - administrador
+            - usuario
+
+    Libro:
+      type: object
+      description: Libro publicado en la plataforma.
+      properties:
+        id_libro:
+          type: integer
+        titulo:
+          type: string
+          maxLength: 150
+        autor:
+          type: string
+        genero:
+          type: string
+        estado:
+          type: string
+        isbn:
+          type: string
+          maxLength: 20
+        descripcion:
+          type: string
+        anio_publicacion:
+          type: integer
+        editorial:
+          type: string
+          maxLength: 100
+        idioma:
+          type: string
+          maxLength: 50
+        paginas:
+          type: integer
+        disponible:
+          type: boolean
+        usuario_id:
+          type:
+            - integer
+            - "null"
+
+    Autor:
+      type: object
+      properties:
+        id_autor:
+          type: integer
+        nombre:
+          type: string
+          maxLength: 50
+        apellido:
+          type: string
+          maxLength: 50
+        nacionalidad:
+          type: string
+          maxLength: 50
+        fecha_nacimiento:
+          type:
+            - string
+            - "null"
+          format: date-time
+
+    Categoria:
+      type: object
+      properties:
+        id_categoria:
+          type: integer
+        nombre:
+          type: string
+          maxLength: 50
+        descripcion:
+          type: string
+          maxLength: 200
+
+    LibroAutor:
+      type: object
+      description: Relación entre un libro y un autor.
+      properties:
         libro_id:
           type: integer
-          minimum: 0
-        solicitante_id:
+        autor_id:
           type: integer
-          minimum: 0
-        id_usuario_ofrece:
+        rol:
+          type: string
+          maxLength: 30
+
+    LibroCategoria:
+      type: object
+      description: Relación entre un libro y una categoría.
+      properties:
+        libro_id:
           type: integer
-          minimum: 0
-        id_usuario_recibe:
+        categoria_id:
           type: integer
-          minimum: 0
+
+    EjemplarLibro:
+      type: object
+      properties:
+        id_ejemplar:
+          type: integer
+        libro_id:
+          type: integer
+        usuario_id:
+          type: integer
+        estado_fisico:
+          type: string
+          maxLength: 30
+        disponibilidad:
+          type: string
+          maxLength: 30
+        fecha_registro:
+          type: string
+          format: date-time
+        observaciones:
+          type: string
+
+    SolicitudIntercambio:
+      type: object
+      properties:
+        id_solicitud:
+          type: integer
+        usuario_solicitante_id:
+          type: integer
+        ejemplar_ofrecido_id:
+          type: integer
+        ejemplar_deseado_id:
+          type: integer
+        fecha_solicitud:
+          type: string
+          format: date-time
+        estado:
+          type: string
+          maxLength: 30
+        mensaje:
+          type: string
+
+    Intercambio:
+      type: object
+      properties:
+        id_intercambio:
+          type: integer
+        libro_id:
+          type:
+            - integer
+            - "null"
+        persona:
+          type: string
+        estado:
+          $ref: "#/components/schemas/EstadoIntercambio"
+        usuario_ofrece_id:
+          type:
+            - integer
+            - "null"
+        usuario_recibe_id:
+          type:
+            - integer
+            - "null"
         fecha_solicitud:
           type:
             - string
@@ -322,46 +560,112 @@ components:
             - string
             - "null"
           format: date-time
-        estado:
-          $ref: "#/components/schemas/EstadoIntercambio"
         observaciones:
           type: string
+        solicitante_id:
+          type:
+            - integer
+            - "null"
         creado:
+          type:
+            - string
+            - "null"
+          format: date-time
+
+    DetalleIntercambio:
+      type: object
+      properties:
+        id_detalle:
+          type: integer
+        intercambio_id:
+          type: integer
+        ejemplar_entregado_id:
+          type: integer
+        ejemplar_recibido_id:
+          type: integer
+        cantidad:
+          type: integer
+
+    Entrega:
+      type: object
+      properties:
+        id_entrega:
+          type: integer
+        intercambio_id:
+          type: integer
+        lugar_entrega:
+          type: string
+          maxLength: 150
+        fecha_programada:
+          type:
+            - string
+            - "null"
+          format: date-time
+        fecha_real:
+          type:
+            - string
+            - "null"
+          format: date-time
+        estado:
+          type: string
+          maxLength: 30
+
+    Resena:
+      type: object
+      properties:
+        id_resena:
+          type: integer
+        intercambio_id:
+          type: integer
+        usuario_autor_id:
+          type: integer
+        usuario_evaluado_id:
+          type: integer
+        puntuacion:
+          type: integer
+        comentario:
+          type: string
+        fecha:
           type: string
           format: date-time
 
-    IntercambioNuevo:
+    CatalogoEntidades:
       type: object
-      required:
-        - libro_id
-        - solicitante_id
+      description: |
+        Catálogo documental de las entidades del sistema.
+        Estas referencias describen modelos de datos y no crean endpoints.
       properties:
-        libro_id:
-          type: integer
-          minimum: 1
-        solicitante_id:
-          type: integer
-          minimum: 1
-        estado:
-          type: string
-          const: pendiente
-          description: Opcional; si se omite, se asigna pendiente.
+        usuario:
+          $ref: "#/components/schemas/Usuario"
+        libro:
+          $ref: "#/components/schemas/Libro"
+        autor:
+          $ref: "#/components/schemas/Autor"
+        categoria:
+          $ref: "#/components/schemas/Categoria"
+        libro_autor:
+          $ref: "#/components/schemas/LibroAutor"
+        libro_categoria:
+          $ref: "#/components/schemas/LibroCategoria"
+        ejemplar_libro:
+          $ref: "#/components/schemas/EjemplarLibro"
+        solicitud_intercambio:
+          $ref: "#/components/schemas/SolicitudIntercambio"
+        intercambio:
+          $ref: "#/components/schemas/Intercambio"
+        detalle_intercambio:
+          $ref: "#/components/schemas/DetalleIntercambio"
+        entrega:
+          $ref: "#/components/schemas/Entrega"
+        resena:
+          $ref: "#/components/schemas/Resena"
 
-    IntercambioActualizacion:
+    MensajeRespuesta:
       type: object
-      required:
-        - libro_id
-        - solicitante_id
-        - estado
       properties:
-        libro_id:
-          type: integer
-          minimum: 1
-        solicitante_id:
-          type: integer
-          minimum: 1
-        estado:
-          $ref: "#/components/schemas/EstadoIntercambio"
+        mensaje:
+          type: string
+          example: Intercambio eliminado correctamente
 
     Error:
       type: object
@@ -373,35 +677,42 @@ components:
 
   responses:
     Error400:
-      description: Datos incorrectos
+      description: Solicitud incorrecta o datos inválidos.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
 
     Error401:
-      description: Token ausente, inválido o credenciales incorrectas
+      description: Token ausente, inválido o credenciales incorrectas.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
 
     Error403:
-      description: El usuario no tiene permisos suficientes
+      description: El usuario no tiene permisos suficientes.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
 
     Error404:
-      description: Intercambio no encontrado
+      description: Recurso no encontrado.
       content:
         application/json:
           schema:
             $ref: "#/components/schemas/Error"
 
-    Error422:
-      description: Estado o transición no permitida
+    Error409:
+      description: Conflicto con el estado o los datos del recurso.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+    Error500:
+      description: Error interno del servidor.
       content:
         application/json:
           schema:

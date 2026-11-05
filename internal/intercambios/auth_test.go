@@ -12,8 +12,8 @@ import (
 
 func TestLogin(t *testing.T) {
 	t.Setenv("JWT_SECRET", strings.Repeat("a", 48))
-	t.Setenv("DEMO_ADMIN_PASSWORD", "clave-admin-prueba")
-	t.Setenv("DEMO_USER_PASSWORD", "clave-usuario-prueba")
+	t.Setenv("DEMO_ADMIN_PASSWORD", "admin123")
+	t.Setenv("DEMO_USER_PASSWORD", "user123")
 
 	pruebas := []struct {
 		nombre   string
@@ -23,19 +23,19 @@ func TestLogin(t *testing.T) {
 	}{
 		{
 			"Login administrador",
-			`{"usuario":"admin","clave":"clave-admin-prueba"}`,
+			`{"usuario":"kenyis_admin","clave":"admin123"}`,
 			200,
-			"admin",
+			"administrador",
 		},
 		{
 			"Login usuario",
-			`{"usuario":"usuario","clave":"clave-usuario-prueba"}`,
+			`{"usuario":"majo_user","clave":"user123"}`,
 			200,
 			"usuario",
 		},
 		{
 			"Contrasena incorrecta",
-			`{"usuario":"admin","clave":"incorrecta"}`,
+			`{"usuario":"kenyis_admin","clave":"incorrecta"}`,
 			401,
 			"",
 		},
@@ -134,7 +134,7 @@ func TestProteger(t *testing.T) {
 		func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 		},
-		"admin",
+		"administrador",
 	)
 
 	pruebas := []struct {
@@ -145,7 +145,7 @@ func TestProteger(t *testing.T) {
 		{"Sin token", "", 401},
 		{"Token incorrecto", "Bearer token-invalido", 401},
 		{"Usuario sin permisos", "Bearer " + generarToken("usuario"), 403},
-		{"Administrador autorizado", "Bearer " + generarToken("admin"), 200},
+		{"Administrador autorizado", "Bearer " + generarToken("administrador"), 200},
 	}
 
 	for _, prueba := range pruebas {

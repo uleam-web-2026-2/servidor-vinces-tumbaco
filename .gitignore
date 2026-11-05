@@ -1,4 +1,19 @@
-﻿.env
-.env.atras
-*.sql
+﻿
+# Variables de entorno y secretos
+.env
+.env.*
+!.env.example
+
+# Archivos ejecutables
 *.exe
+
+# Archivos temporales
+*.tmp
+*.log
+
+# Copias de seguridad locales
+respaldo_antes_correcciones/
+
+# Archivos de configuración de editores
+.vscode/
+.idea/

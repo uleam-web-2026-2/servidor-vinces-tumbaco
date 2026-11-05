@@ -16,7 +16,7 @@ type Credenciales struct {
 	Clave   string `json:"clave"`
 }
 
-// Login valida usuarios de demostración y entrega un JWT.
+// Login valida los usuarios de demostración y entrega un JWT.
 func Login(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		responderError(w, http.StatusMethodNotAllowed,
@@ -34,20 +34,22 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	var rol string
 
 	switch {
-	case datos.Usuario == "admin" &&
+	case datos.Usuario == "kenyis_admin" &&
+		os.Getenv("DEMO_ADMIN_PASSWORD") != "" &&
 		subtle.ConstantTimeCompare(
 			[]byte(datos.Clave),
 			[]byte(os.Getenv("DEMO_ADMIN_PASSWORD")),
-		) == 1 &&
-		os.Getenv("DEMO_ADMIN_PASSWORD") != "":
-		rol = "admin"
+		) == 1:
 
-	case datos.Usuario == "usuario" &&
+		rol = "administrador"
+
+	case datos.Usuario == "majo_user" &&
+		os.Getenv("DEMO_USER_PASSWORD") != "" &&
 		subtle.ConstantTimeCompare(
 			[]byte(datos.Clave),
 			[]byte(os.Getenv("DEMO_USER_PASSWORD")),
-		) == 1 &&
-		os.Getenv("DEMO_USER_PASSWORD") != "":
+		) == 1:
+
 		rol = "usuario"
 
 	default:
