@@ -11,7 +11,6 @@ import (
 )
 
 // IntercambiosService define las operaciones que necesita el Handler.
-// El Handler no accede directamente a PostgreSQL.
 type IntercambiosService interface {
 	Listar() ([]Intercambio, error)
 	Obtener(id uint) (*Intercambio, error)
@@ -26,24 +25,19 @@ type Handler struct {
 	Servicio IntercambiosService
 }
 
-// Datos necesarios para crear un intercambio.
+// Datos internos para crear un intercambio.
 type CrearIntercambioInput struct {
-	UsuarioSolicitanteID uint   `json:"id_usuario_solicitante"`
-	EjemplarOfrecidoID   uint   `json:"id_ejemplar_ofrecido"`
-	EjemplarDeseadoID    uint   `json:"id_ejemplar_deseado"`
-	Observaciones        string `json:"observaciones"`
+	UsuarioSolicitanteID uint
+	EjemplarOfrecidoID   uint
+	EjemplarDeseadoID    uint
+	Observaciones        string
 }
 
-// Datos necesarios para actualizar un intercambio.
+// Datos internos para actualizar un intercambio.
 type ActualizarIntercambioInput struct {
-	UsuarioOfreceID uint   `json:"id_usuario_ofrece"`
-	UsuarioRecibeID uint   `json:"id_usuario_recibe"`
-	Observaciones   string `json:"observaciones"`
-}
-
-// Datos necesarios para cambiar el estado.
-type solicitudEstado struct {
-	Estado string `json:"estado"`
+	UsuarioOfreceID uint
+	UsuarioRecibeID uint
+	Observaciones   string
 }
 
 // Responder solicitudes con formato JSON.
@@ -60,6 +54,17 @@ func responderError(w http.ResponseWriter, codigo int, mensaje string) {
 	})
 }
 
+// Convertir una lista de modelos a DTO de respuesta.
+func listaARespuestaDTO(lista []Intercambio) []IntercambioRespuestaDTO {
+	resultado := make([]IntercambioRespuestaDTO, 0, len(lista))
+
+	for i := range lista {
+		resultado = append(resultado, IntercambioARespuestaDTO(&lista[i]))
+	}
+
+	return resultado
+}
+
 // Listar todos los intercambios.
 func (h *Handler) Listar(w http.ResponseWriter, r *http.Request) {
 	lista, err := h.Servicio.Listar()
@@ -70,7 +75,7 @@ func (h *Handler) Listar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responderJSON(w, http.StatusOK, lista)
+	responderJSON(w, http.StatusOK, listaARespuestaDTO(lista))
 }
 
 // Obtener un intercambio por su identificador.
@@ -89,12 +94,12 @@ func (h *Handler) Obtener(w http.ResponseWriter, r *http.Request, id uint) {
 		return
 	}
 
-	responderJSON(w, http.StatusOK, intercambio)
+	responderJSON(w, http.StatusOK, IntercambioARespuestaDTO(intercambio))
 }
 
 // Crear un intercambio.
 func (h *Handler) Crear(w http.ResponseWriter, r *http.Request) {
-	var solicitud CrearIntercambioInput
+	var solicitud CrearIntercambioDTO
 
 	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
 		responderError(w, http.StatusBadRequest,
@@ -102,7 +107,7 @@ func (h *Handler) Crear(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	intercambio, err := h.Servicio.Crear(solicitud)
+	intercambio, err := h.Servicio.Crear(solicitud.AInput())
 
 	if err != nil {
 		mensaje := err.Error()
@@ -116,12 +121,12 @@ func (h *Handler) Crear(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responderJSON(w, http.StatusCreated, intercambio)
+	responderJSON(w, http.StatusCreated, IntercambioARespuestaDTO(intercambio))
 }
 
 // Actualizar los datos de un intercambio pendiente.
 func (h *Handler) Actualizar(w http.ResponseWriter, r *http.Request, id uint) {
-	var solicitud ActualizarIntercambioInput
+	var solicitud ActualizarIntercambioDTO
 
 	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
 		responderError(w, http.StatusBadRequest,
@@ -129,7 +134,7 @@ func (h *Handler) Actualizar(w http.ResponseWriter, r *http.Request, id uint) {
 		return
 	}
 
-	intercambio, err := h.Servicio.Actualizar(id, solicitud)
+	intercambio, err := h.Servicio.Actualizar(id, solicitud.AInput())
 
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		responderError(w, http.StatusNotFound,
@@ -148,7 +153,7 @@ func (h *Handler) Actualizar(w http.ResponseWriter, r *http.Request, id uint) {
 		return
 	}
 
-	responderJSON(w, http.StatusOK, intercambio)
+	responderJSON(w, http.StatusOK, IntercambioARespuestaDTO(intercambio))
 }
 
 // Verificar si un cambio de estado está permitido.
@@ -167,7 +172,7 @@ func TransicionPermitida(actual, nuevo string) bool {
 
 // Cambiar el estado de un intercambio.
 func (h *Handler) CambiarEstado(w http.ResponseWriter, r *http.Request, id uint) {
-	var solicitud solicitudEstado
+	var solicitud CambiarEstadoDTO
 
 	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
 		responderError(w, http.StatusBadRequest,
@@ -200,7 +205,7 @@ func (h *Handler) CambiarEstado(w http.ResponseWriter, r *http.Request, id uint)
 		return
 	}
 
-	responderJSON(w, http.StatusOK, intercambio)
+	responderJSON(w, http.StatusOK, IntercambioARespuestaDTO(intercambio))
 }
 
 // Eliminar un intercambio y su detalle.

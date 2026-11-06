@@ -4,17 +4,17 @@ import "time"
 
 // USUARIO
 type Usuario struct {
-	ID            uint      `gorm:"column:id;primaryKey" json:"id_usuario"`
-	Nombre        string    `gorm:"size:50;not null" json:"nombre"`
-	Apellido      string    `gorm:"size:50" json:"apellido"`
-	Correo        string    `gorm:"size:100;unique;not null" json:"correo"`
-	Contrasena    string    `gorm:"column:contrasena;size:255" json:"-"`
-	Telefono      string    `gorm:"size:20" json:"telefono"`
-	Direccion     string    `gorm:"size:150" json:"direccion"`
-	Ciudad        string    `gorm:"size:50" json:"ciudad"`
-	FechaRegistro time.Time `json:"fecha_registro"`
-	Estado        string    `gorm:"size:20" json:"estado"`
-	Rol           string    `gorm:"size:20;not null" json:"rol"`
+	ID            uint   `gorm:"column:id;primaryKey"`
+	Nombre        string `gorm:"size:50;not null"`
+	Apellido      string `gorm:"size:50"`
+	Correo        string `gorm:"size:100;unique;not null"`
+	Contrasena    string `gorm:"column:contrasena;size:255"`
+	Telefono      string `gorm:"size:20"`
+	Direccion     string `gorm:"size:150"`
+	Ciudad        string `gorm:"size:50"`
+	FechaRegistro time.Time
+	Estado        string `gorm:"size:20"`
+	Rol           string `gorm:"size:20;not null"`
 }
 
 func (Usuario) TableName() string {
@@ -23,19 +23,19 @@ func (Usuario) TableName() string {
 
 // LIBRO
 type Libro struct {
-	ID              uint   `gorm:"column:id;primaryKey" json:"id_libro"`
-	Titulo          string `gorm:"size:150;not null" json:"titulo"`
-	Autor           string `gorm:"type:text" json:"autor,omitempty"`
-	Genero          string `gorm:"type:text" json:"genero,omitempty"`
-	Estado          string `gorm:"type:text" json:"estado,omitempty"`
-	ISBN            string `gorm:"size:20;uniqueIndex" json:"isbn"`
-	Descripcion     string `gorm:"type:text" json:"descripcion"`
-	AnioPublicacion int    `gorm:"column:anio_publicacion" json:"anio_publicacion"`
-	Editorial       string `gorm:"size:100" json:"editorial"`
-	Idioma          string `gorm:"size:50" json:"idioma"`
-	Paginas         int    `json:"paginas"`
-	Disponible      bool   `gorm:"not null;default:true" json:"disponible"`
-	UsuarioID       *uint  `gorm:"column:usuario_id" json:"usuario_id,omitempty"`
+	ID              uint   `gorm:"column:id;primaryKey"`
+	Titulo          string `gorm:"size:150;not null"`
+	Autor           string `gorm:"type:text"`
+	Genero          string `gorm:"type:text"`
+	Estado          string `gorm:"type:text"`
+	ISBN            string `gorm:"size:20;uniqueIndex"`
+	Descripcion     string `gorm:"type:text"`
+	AnioPublicacion int    `gorm:"column:anio_publicacion"`
+	Editorial       string `gorm:"size:100"`
+	Idioma          string `gorm:"size:50"`
+	Paginas         int
+	Disponible      bool  `gorm:"not null;default:true"`
+	UsuarioID       *uint `gorm:"column:usuario_id"`
 }
 
 func (Libro) TableName() string {
@@ -44,11 +44,11 @@ func (Libro) TableName() string {
 
 // AUTOR
 type Autor struct {
-	ID              uint       `gorm:"column:id;primaryKey" json:"id_autor"`
-	Nombre          string     `gorm:"size:50" json:"nombre"`
-	Apellido        string     `gorm:"size:50" json:"apellido"`
-	Nacionalidad    string     `gorm:"size:50" json:"nacionalidad"`
-	FechaNacimiento *time.Time `json:"fecha_nacimiento"`
+	ID              uint   `gorm:"column:id;primaryKey"`
+	Nombre          string `gorm:"size:50"`
+	Apellido        string `gorm:"size:50"`
+	Nacionalidad    string `gorm:"size:50"`
+	FechaNacimiento *time.Time
 }
 
 func (Autor) TableName() string {
@@ -57,9 +57,9 @@ func (Autor) TableName() string {
 
 // CATEGORIA
 type Categoria struct {
-	ID          uint   `gorm:"column:id;primaryKey" json:"id_categoria"`
-	Nombre      string `gorm:"size:50" json:"nombre"`
-	Descripcion string `gorm:"size:200" json:"descripcion"`
+	ID          uint   `gorm:"column:id;primaryKey"`
+	Nombre      string `gorm:"size:50"`
+	Descripcion string `gorm:"size:200"`
 }
 
 func (Categoria) TableName() string {
@@ -68,12 +68,12 @@ func (Categoria) TableName() string {
 
 // LIBRO_AUTOR
 type LibroAutor struct {
-	LibroID uint   `gorm:"column:libro_id;primaryKey" json:"libro_id"`
-	AutorID uint   `gorm:"column:autor_id;primaryKey" json:"autor_id"`
-	Rol     string `gorm:"size:30" json:"rol"`
+	LibroID uint   `gorm:"column:libro_id;primaryKey"`
+	AutorID uint   `gorm:"column:autor_id;primaryKey"`
+	Rol     string `gorm:"size:30"`
 
-	Libro Libro `gorm:"foreignKey:LibroID;references:ID" json:"-"`
-	Autor Autor `gorm:"foreignKey:AutorID;references:ID" json:"-"`
+	Libro Libro `gorm:"foreignKey:LibroID;references:ID"`
+	Autor Autor `gorm:"foreignKey:AutorID;references:ID"`
 }
 
 func (LibroAutor) TableName() string {
@@ -82,11 +82,11 @@ func (LibroAutor) TableName() string {
 
 // LIBRO_CATEGORIA
 type LibroCategoria struct {
-	LibroID     uint `gorm:"column:libro_id;primaryKey" json:"libro_id"`
-	CategoriaID uint `gorm:"column:categoria_id;primaryKey" json:"categoria_id"`
+	LibroID     uint `gorm:"column:libro_id;primaryKey"`
+	CategoriaID uint `gorm:"column:categoria_id;primaryKey"`
 
-	Libro     Libro     `gorm:"foreignKey:LibroID;references:ID" json:"-"`
-	Categoria Categoria `gorm:"foreignKey:CategoriaID;references:ID" json:"-"`
+	Libro     Libro     `gorm:"foreignKey:LibroID;references:ID"`
+	Categoria Categoria `gorm:"foreignKey:CategoriaID;references:ID"`
 }
 
 func (LibroCategoria) TableName() string {
@@ -95,16 +95,16 @@ func (LibroCategoria) TableName() string {
 
 // EJEMPLAR_LIBRO
 type EjemplarLibro struct {
-	ID             uint      `gorm:"column:id;primaryKey" json:"id_ejemplar"`
-	LibroID        uint      `gorm:"column:libro_id;not null" json:"libro_id"`
-	UsuarioID      uint      `gorm:"column:usuario_id;not null" json:"usuario_id"`
-	EstadoFisico   string    `gorm:"size:30" json:"estado_fisico"`
-	Disponibilidad string    `gorm:"size:30" json:"disponibilidad"`
-	FechaRegistro  time.Time `json:"fecha_registro"`
-	Observaciones  string    `gorm:"type:text" json:"observaciones"`
+	ID             uint   `gorm:"column:id;primaryKey"`
+	LibroID        uint   `gorm:"column:libro_id;not null"`
+	UsuarioID      uint   `gorm:"column:usuario_id;not null"`
+	EstadoFisico   string `gorm:"size:30"`
+	Disponibilidad string `gorm:"size:30"`
+	FechaRegistro  time.Time
+	Observaciones  string `gorm:"type:text"`
 
-	Libro   Libro   `gorm:"foreignKey:LibroID;references:ID" json:"-"`
-	Usuario Usuario `gorm:"foreignKey:UsuarioID;references:ID" json:"-"`
+	Libro   Libro   `gorm:"foreignKey:LibroID;references:ID"`
+	Usuario Usuario `gorm:"foreignKey:UsuarioID;references:ID"`
 }
 
 func (EjemplarLibro) TableName() string {
@@ -113,17 +113,17 @@ func (EjemplarLibro) TableName() string {
 
 // SOLICITUD_INTERCAMBIO
 type SolicitudIntercambio struct {
-	ID                   uint      `gorm:"column:id;primaryKey" json:"id_solicitud"`
-	UsuarioSolicitanteID uint      `gorm:"column:usuario_solicitante_id" json:"usuario_solicitante_id"`
-	EjemplarOfrecidoID   uint      `gorm:"column:ejemplar_ofrecido_id" json:"ejemplar_ofrecido_id"`
-	EjemplarDeseadoID    uint      `gorm:"column:ejemplar_deseado_id" json:"ejemplar_deseado_id"`
-	FechaSolicitud       time.Time `json:"fecha_solicitud"`
-	Estado               string    `gorm:"size:30" json:"estado"`
-	Mensaje              string    `gorm:"type:text" json:"mensaje"`
+	ID                   uint `gorm:"column:id;primaryKey"`
+	UsuarioSolicitanteID uint `gorm:"column:usuario_solicitante_id"`
+	EjemplarOfrecidoID   uint `gorm:"column:ejemplar_ofrecido_id"`
+	EjemplarDeseadoID    uint `gorm:"column:ejemplar_deseado_id"`
+	FechaSolicitud       time.Time
+	Estado               string `gorm:"size:30"`
+	Mensaje              string `gorm:"type:text"`
 
-	UsuarioSolicitante Usuario       `gorm:"foreignKey:UsuarioSolicitanteID;references:ID" json:"-"`
-	EjemplarOfrecido   EjemplarLibro `gorm:"foreignKey:EjemplarOfrecidoID;references:ID" json:"-"`
-	EjemplarDeseado    EjemplarLibro `gorm:"foreignKey:EjemplarDeseadoID;references:ID" json:"-"`
+	UsuarioSolicitante Usuario       `gorm:"foreignKey:UsuarioSolicitanteID;references:ID"`
+	EjemplarOfrecido   EjemplarLibro `gorm:"foreignKey:EjemplarOfrecidoID;references:ID"`
+	EjemplarDeseado    EjemplarLibro `gorm:"foreignKey:EjemplarDeseadoID;references:ID"`
 }
 
 func (SolicitudIntercambio) TableName() string {
@@ -132,22 +132,22 @@ func (SolicitudIntercambio) TableName() string {
 
 // INTERCAMBIO
 type Intercambio struct {
-	ID                uint       `gorm:"column:id;primaryKey" json:"id_intercambio"`
-	LibroID           *uint      `gorm:"column:libro_id" json:"libro_id,omitempty"`
-	Persona           string     `gorm:"column:persona;type:text" json:"persona,omitempty"`
-	Estado            string     `gorm:"size:30;not null;default:pendiente" json:"estado"`
-	UsuarioOfreceID   *uint      `gorm:"column:usuario_ofrece_id" json:"usuario_ofrece_id,omitempty"`
-	UsuarioRecibeID   *uint      `gorm:"column:usuario_recibe_id" json:"usuario_recibe_id,omitempty"`
-	FechaSolicitud    *time.Time `json:"fecha_solicitud"`
-	FechaConfirmacion *time.Time `json:"fecha_confirmacion"`
-	FechaFinalizacion *time.Time `json:"fecha_finalizacion"`
-	Observaciones     string     `gorm:"type:text" json:"observaciones"`
-	SolicitanteID     *uint      `gorm:"column:solicitante_id" json:"solicitante_id,omitempty"`
-	Creado            *time.Time `gorm:"column:creado" json:"creado,omitempty"`
+	ID                uint   `gorm:"column:id;primaryKey"`
+	LibroID           *uint  `gorm:"column:libro_id"`
+	Persona           string `gorm:"column:persona;type:text"`
+	Estado            string `gorm:"size:30;not null;default:pendiente"`
+	UsuarioOfreceID   *uint  `gorm:"column:usuario_ofrece_id"`
+	UsuarioRecibeID   *uint  `gorm:"column:usuario_recibe_id"`
+	FechaSolicitud    *time.Time
+	FechaConfirmacion *time.Time
+	FechaFinalizacion *time.Time
+	Observaciones     string     `gorm:"type:text"`
+	SolicitanteID     *uint      `gorm:"column:solicitante_id"`
+	Creado            *time.Time `gorm:"column:creado"`
 
-	Libro         Libro    `gorm:"foreignKey:LibroID;references:ID" json:"-"`
-	UsuarioOfrece *Usuario `gorm:"foreignKey:UsuarioOfreceID;references:ID" json:"-"`
-	UsuarioRecibe *Usuario `gorm:"foreignKey:UsuarioRecibeID;references:ID" json:"-"`
+	Libro         Libro    `gorm:"foreignKey:LibroID;references:ID"`
+	UsuarioOfrece *Usuario `gorm:"foreignKey:UsuarioOfreceID;references:ID"`
+	UsuarioRecibe *Usuario `gorm:"foreignKey:UsuarioRecibeID;references:ID"`
 }
 
 func (Intercambio) TableName() string {
@@ -156,15 +156,15 @@ func (Intercambio) TableName() string {
 
 // DETALLE_INTERCAMBIO
 type DetalleIntercambio struct {
-	ID                  uint `gorm:"column:id;primaryKey" json:"id_detalle"`
-	IntercambioID       uint `gorm:"column:intercambio_id" json:"intercambio_id"`
-	EjemplarEntregadoID uint `gorm:"column:ejemplar_entregado_id" json:"ejemplar_entregado_id"`
-	EjemplarRecibidoID  uint `gorm:"column:ejemplar_recibido_id" json:"ejemplar_recibido_id"`
-	Cantidad            int  `json:"cantidad"`
+	ID                  uint `gorm:"column:id;primaryKey"`
+	IntercambioID       uint `gorm:"column:intercambio_id"`
+	EjemplarEntregadoID uint `gorm:"column:ejemplar_entregado_id"`
+	EjemplarRecibidoID  uint `gorm:"column:ejemplar_recibido_id"`
+	Cantidad            int
 
-	Intercambio       Intercambio   `gorm:"foreignKey:IntercambioID;references:ID" json:"-"`
-	EjemplarEntregado EjemplarLibro `gorm:"foreignKey:EjemplarEntregadoID;references:ID" json:"-"`
-	EjemplarRecibido  EjemplarLibro `gorm:"foreignKey:EjemplarRecibidoID;references:ID" json:"-"`
+	Intercambio       Intercambio   `gorm:"foreignKey:IntercambioID;references:ID"`
+	EjemplarEntregado EjemplarLibro `gorm:"foreignKey:EjemplarEntregadoID;references:ID"`
+	EjemplarRecibido  EjemplarLibro `gorm:"foreignKey:EjemplarRecibidoID;references:ID"`
 }
 
 func (DetalleIntercambio) TableName() string {
@@ -173,14 +173,14 @@ func (DetalleIntercambio) TableName() string {
 
 // ENTREGA
 type Entrega struct {
-	ID              uint       `gorm:"column:id;primaryKey" json:"id_entrega"`
-	IntercambioID   uint       `gorm:"column:intercambio_id;uniqueIndex" json:"intercambio_id"`
-	LugarEntrega    string     `gorm:"size:150" json:"lugar_entrega"`
-	FechaProgramada *time.Time `json:"fecha_programada"`
-	FechaReal       *time.Time `json:"fecha_real"`
-	Estado          string     `gorm:"size:30" json:"estado"`
+	ID              uint   `gorm:"column:id;primaryKey"`
+	IntercambioID   uint   `gorm:"column:intercambio_id;uniqueIndex"`
+	LugarEntrega    string `gorm:"size:150"`
+	FechaProgramada *time.Time
+	FechaReal       *time.Time
+	Estado          string `gorm:"size:30"`
 
-	Intercambio Intercambio `gorm:"foreignKey:IntercambioID;references:ID" json:"-"`
+	Intercambio Intercambio `gorm:"foreignKey:IntercambioID;references:ID"`
 }
 
 func (Entrega) TableName() string {
@@ -189,17 +189,17 @@ func (Entrega) TableName() string {
 
 // RESENA
 type Resena struct {
-	ID                uint      `gorm:"column:id;primaryKey" json:"id_resena"`
-	IntercambioID     uint      `gorm:"column:intercambio_id" json:"intercambio_id"`
-	UsuarioAutorID    uint      `gorm:"column:usuario_autor_id" json:"usuario_autor_id"`
-	UsuarioEvaluadoID uint      `gorm:"column:usuario_evaluado_id" json:"usuario_evaluado_id"`
-	Puntuacion        int       `json:"puntuacion"`
-	Comentario        string    `gorm:"type:text" json:"comentario"`
-	Fecha             time.Time `json:"fecha"`
+	ID                uint `gorm:"column:id;primaryKey"`
+	IntercambioID     uint `gorm:"column:intercambio_id"`
+	UsuarioAutorID    uint `gorm:"column:usuario_autor_id"`
+	UsuarioEvaluadoID uint `gorm:"column:usuario_evaluado_id"`
+	Puntuacion        int
+	Comentario        string `gorm:"type:text"`
+	Fecha             time.Time
 
-	Intercambio     Intercambio `gorm:"foreignKey:IntercambioID;references:ID" json:"-"`
-	UsuarioAutor    Usuario     `gorm:"foreignKey:UsuarioAutorID;references:ID" json:"-"`
-	UsuarioEvaluado Usuario     `gorm:"foreignKey:UsuarioEvaluadoID;references:ID" json:"-"`
+	Intercambio     Intercambio `gorm:"foreignKey:IntercambioID;references:ID"`
+	UsuarioAutor    Usuario     `gorm:"foreignKey:UsuarioAutorID;references:ID"`
+	UsuarioEvaluado Usuario     `gorm:"foreignKey:UsuarioEvaluadoID;references:ID"`
 }
 
 func (Resena) TableName() string {
