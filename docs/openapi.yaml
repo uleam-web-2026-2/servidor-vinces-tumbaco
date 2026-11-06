@@ -109,7 +109,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/Intercambio"
+                  $ref: "#/components/schemas/IntercambioRespuestaDTO"
         "401":
           $ref: "#/components/responses/Error401"
         "403":
@@ -130,14 +130,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CrearIntercambioInput"
+              $ref: "#/components/schemas/CrearIntercambioDTO"
       responses:
         "201":
           description: Intercambio creado
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Intercambio"
+                $ref: "#/components/schemas/IntercambioRespuestaDTO"
         "400":
           $ref: "#/components/responses/Error400"
         "401":
@@ -170,7 +170,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Intercambio"
+                $ref: "#/components/schemas/IntercambioRespuestaDTO"
         "400":
           $ref: "#/components/responses/Error400"
         "401":
@@ -193,14 +193,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ActualizarIntercambioInput"
+              $ref: "#/components/schemas/ActualizarIntercambioDTO"
       responses:
         "200":
           description: Intercambio actualizado
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Intercambio"
+                $ref: "#/components/schemas/IntercambioRespuestaDTO"
         "400":
           $ref: "#/components/responses/Error400"
         "401":
@@ -232,14 +232,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CambiarEstadoInput"
+              $ref: "#/components/schemas/CambiarEstadoDTO"
       responses:
         "200":
           description: Estado actualizado
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Intercambio"
+                $ref: "#/components/schemas/IntercambioRespuestaDTO"
         "400":
           $ref: "#/components/responses/Error400"
         "401":
@@ -306,7 +306,7 @@ components:
           type: string
           description: Token JWT de autenticación
 
-    CrearIntercambioInput:
+    CrearIntercambioDTO:
       type: object
       required:
         - id_usuario_solicitante
@@ -325,7 +325,7 @@ components:
         observaciones:
           type: string
 
-    ActualizarIntercambioInput:
+    ActualizarIntercambioDTO:
       type: object
       required:
         - id_usuario_ofrece
@@ -340,7 +340,7 @@ components:
         observaciones:
           type: string
 
-    CambiarEstadoInput:
+    CambiarEstadoDTO:
       type: object
       required:
         - estado
@@ -525,6 +525,54 @@ components:
           type: string
 
     Intercambio:
+      type: object
+      properties:
+        id_intercambio:
+          type: integer
+        libro_id:
+          type:
+            - integer
+            - "null"
+        persona:
+          type: string
+        estado:
+          $ref: "#/components/schemas/EstadoIntercambio"
+        usuario_ofrece_id:
+          type:
+            - integer
+            - "null"
+        usuario_recibe_id:
+          type:
+            - integer
+            - "null"
+        fecha_solicitud:
+          type:
+            - string
+            - "null"
+          format: date-time
+        fecha_confirmacion:
+          type:
+            - string
+            - "null"
+          format: date-time
+        fecha_finalizacion:
+          type:
+            - string
+            - "null"
+          format: date-time
+        observaciones:
+          type: string
+        solicitante_id:
+          type:
+            - integer
+            - "null"
+        creado:
+          type:
+            - string
+            - "null"
+          format: date-time
+
+    IntercambioRespuestaDTO:
       type: object
       properties:
         id_intercambio:
