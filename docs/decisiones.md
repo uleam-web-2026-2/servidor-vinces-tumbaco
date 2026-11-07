@@ -339,3 +339,28 @@ Se utilizó ChatGPT como herramienta de apoyo para comprender los requisitos del
 La Plataforma de Intercambio de Libros Usados contempla doce entidades que permiten organizar la información de usuarios, libros, autores, categorías, ejemplares, solicitudes, intercambios, entregas y reseñas.
 
 Además, incorpora autenticación JWT, control de permisos por roles, validaciones de estados y una arquitectura organizada por capas. Esta separación facilita el mantenimiento del código, organiza las responsabilidades y mejora la estructura de la API.
+## Anexo A · Semana 10 · Transacciones
+
+### D1 · El caso
+El caso de uso analizado es una operación de confirmación y cobro (o el equivalente en KEMA al aceptar y registrar un intercambio de libros). Este flujo escribe de manera consecutiva en dos tablas distintas de la base de datos (por ejemplo, actualizar el estado de la solicitud/libro y registrar el movimiento de transacción o detalle). Si la segunda escritura falla a mitad de camino por una restricción de la base de datos (como una validación `CHECK`), la primera escritura permanece guardada, dejando el sistema en un estado inconsistente.
+
+### D2 · Opciones que consideramos
+1. **Opción 1: Transacción gestionada directamente en la capa de servicio.** 
+   - *Funcionamiento:* El servicio importa `gorm` o `database/sql` y abre explícitamente el bloque de transacción (`BEGIN`, `COMMIT`, `ROLLBACK`).
+   - *Restricción que rompe:* Rompe el principio de Arquitectura Limpia al acoplar la lógica de negocio a detalles específicos de persistencia de bases de datos.
+2. **Opción 2: Transacción encapsulada en el adaptador del repositorio.**
+   - *Funcionamiento:* El servicio invoca un único método del repositorio, y es la implementación del adaptador la que envuelve las operaciones dentro de una transacción nativa.
+   - *Restricción que cumple:* Mantiene el servicio totalmente agnóstico de la base de datos y permite que las pruebas unitarias sigan usando un repositorio falso (mock) sin base de datos.
+
+### D3 · La que elegimos y por qué
+Elegimos la **Opción 2 (transacción en el adaptador)** porque en la plataforma **KEMA** es fundamental proteger el desacoplamiento entre capas. Queremos que el servicio de negocio mantenga su portabilidad y que las pruebas unitarias continúen corriendo de forma rápida en memoria sin requerir una conexión real a PostgreSQL.
+
+### D4 · La que descartamos y por qué
+Descartamos la **Opción 1 (transacción en el servicio)** porque nos habría traído el problema concreto de contaminar las reglas del negocio con código acoplado a GORM y SQL, imposibilitando la ejecución de pruebas unitarias limpias con repositorios simulados.
+
+### D5 · Con sqlc
+Para el adaptador con `sqlc`, se requiere utilizar el soporte de transacciones mediante objetos de tipo `Queries` vinculados a la transacción (`WithTx`), abriendo la transacción a nivel de la conexión o pool (`db.BeginTx`). En nuestro diseño actual basado en GORM, la estructura de capas e interfaces se mantiene intacta; la lógica transaccional se aísla por completo dentro de cada adaptador correspondiente sin alterar los contratos del servicio.
+
+### D6 · Archivos
+- **Archivos que tocamos:** El archivo `docs/decisiones.md` (incorporando este Anexo A con el análisis de diseño).
+- **Archivos que quedaron igual:** Las capas de servicios (`internal/services/`), las interfaces de los repositorios, las rutas, los manejadores (`handlers.go`) y las pruebas unitarias existentes con el repositorio falso, los cuales no requirieron modificaciones gracias a una correcta separación de responsabilidades.
