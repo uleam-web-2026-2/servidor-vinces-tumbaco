@@ -17,3 +17,6 @@ respaldo_antes_correcciones/
 # Archivos de configuración de editores
 .vscode/
 .idea/
+
+.env.*
+!.env.example
