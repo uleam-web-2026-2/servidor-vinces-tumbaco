@@ -1,0 +1,2 @@
+﻿docker run --rm kema-api
+Error: la variable de entorno DATABASE_URL es obligatoria

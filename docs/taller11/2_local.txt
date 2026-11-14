@@ -1,0 +1,2 @@
+﻿docker run --rm --env-file .env.docker kema-api
+Error conectando a PostgreSQL: dial tcp 127.0.0.1:5434: connect: connection refused

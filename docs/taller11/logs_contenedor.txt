@@ -1,0 +1,8 @@
+﻿Servidor KEMA escuchando en el puerto 8080
+GET /salud - 200 OK
+GET /intercambios - 200 OK
+GET /intercambios/1 - 200 OK
+POST /intercambios - 200 OK
+PUT /intercambios/8 - 200 OK
+PATCH /intercambios/8 - 200 OK
+DELETE /intercambios/8 - 200 OK
