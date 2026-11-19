@@ -1,0 +1,7 @@
+# Registro de las 6 peticiones del Hito 2 (con defensas y usuario de la API)
+1 sin token -> 401
+2 login -> 200
+3 con token -> 200
+4 rol sin permiso -> 403
+5 cambio permitido -> 200
+6 transición prohibida -> 409
