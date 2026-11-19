@@ -1,0 +1,7 @@
+﻿PRUEBA CORS - ORIGEN PERMITIDO
+
+HTTP/1.1 200 OK
+Access-Control-Allow-Headers: Authorization, Content-Type
+Access-Control-Allow-Methods: PATCH
+Access-Control-Allow-Origin: http://localhost:5173
+Access-Control-Max-Age: 300

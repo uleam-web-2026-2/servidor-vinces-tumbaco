@@ -1,0 +1,68 @@
+Intento 1
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+Vary: Origin
+X-Ratelimit-Limit: 5
+X-Ratelimit-Remaining: 4
+X-Ratelimit-Reset: 1795122686
+Date: Thu, 19 Nov 2026 21:10:52 GMT
+Content-Length: 37
+
+{"error":"credenciales incorrectas"}
+Intento 2
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+Vary: Origin
+X-Ratelimit-Limit: 5
+X-Ratelimit-Remaining: 3
+X-Ratelimit-Reset: 1795122686
+Date: Thu, 19 Nov 2026 21:10:52 GMT
+Content-Length: 37
+
+{"error":"credenciales incorrectas"}
+Intento 3
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+Vary: Origin
+X-Ratelimit-Limit: 5
+X-Ratelimit-Remaining: 2
+X-Ratelimit-Reset: 1795122686
+Date: Thu, 19 Nov 2026 21:10:52 GMT
+Content-Length: 37
+
+{"error":"credenciales incorrectas"}
+Intento 4
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+Vary: Origin
+X-Ratelimit-Limit: 5
+X-Ratelimit-Remaining: 1
+X-Ratelimit-Reset: 1795122686
+Date: Thu, 19 Nov 2026 21:10:52 GMT
+Content-Length: 37
+
+{"error":"credenciales incorrectas"}
+Intento 5
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+Vary: Origin
+X-Ratelimit-Limit: 5
+X-Ratelimit-Remaining: 0
+X-Ratelimit-Reset: 1795122686
+Date: Thu, 19 Nov 2026 21:10:52 GMT
+Content-Length: 37
+
+{"error":"credenciales incorrectas"}
+Intento 6
+HTTP/1.1 429 Too Many Requests
+Content-Type: text/plain; charset=utf-8
+Retry-After: 60
+Vary: Origin
+X-Content-Type-Options: nosniff
+X-Ratelimit-Limit: 5
+X-Ratelimit-Remaining: 0
+X-Ratelimit-Reset: 1795122686
+Date: Thu, 19 Nov 2026 21:10:52 GMT
+Content-Length: 18
+
+Too Many Requests

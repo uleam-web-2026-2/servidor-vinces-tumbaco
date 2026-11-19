@@ -1,0 +1,17 @@
+internal/almacen/filas/consultas.sql.go:19:	row := q.db.QueryRowContext(ctx, buscarIntercambio, id)
+internal/almacen/filas/consultas.sql.go:37:	result, err := q.db.ExecContext(ctx, guardarIntercambio, arg.ID, arg.Estado)
+internal/almacen/filas/db.go:13:	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+internal/almacen/filas/db.go:15:	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
+internal/almacen/filas/db.go:16:	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
+internal/libros/manejadores.go:20:	query := m.DB.Debug().Preload("Prestamos").Order("id ASC")
+internal/libros/manejadores.go:22:	estado := r.URL.Query().Get("estado")
+internal/libros/manejadores.go:30:		query = query.Where("estado = ?", estado)
+internal/libros/manejadores.go:33:	if err := query.Find(&libros).Error; err != nil {
+internal/libros/manejadores.go:84:	if err := m.DB.First(&libro, id).Error; err != nil {
+internal/libros/manejadores.go:103:	if err := m.DB.First(&libro, id).Error; err != nil {
+internal/libros/manejadores.go:148:	if err := m.DB.First(&libro, id).Error; err != nil {
+internal/libros/manejadores.go:160:	if err := m.DB.Model(&Prestamo{}).Where("libro_id = ?", id).Count(&cantidad).Error; err != nil {
+internal/repository/intercambios_repository.go:34:		Find(&lista).Error
+internal/repository/intercambios_repository.go:65:	err := repo.DB.First(&ejemplar, "id = ?", id).Error
+internal/repository/intercambios_repository.go:117:			Where("intercambio_id = ?", id).
+main.go:151:		Addr:         ":" + cfg.Puerto,

@@ -98,6 +98,12 @@ func (m Manejador) ObtenerLibro(w http.ResponseWriter, r *http.Request) {
 func (m Manejador) ActualizarLibro(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
+	// Validar que el ID sea numérico
+	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+		http.Error(w, "ID invalido", http.StatusBadRequest)
+		return
+	}
+
 	var libro Libro
 
 	if err := m.DB.First(&libro, id).Error; err != nil {
@@ -142,6 +148,11 @@ func (m Manejador) ActualizarLibro(w http.ResponseWriter, r *http.Request) {
 
 func (m Manejador) EliminarLibro(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+
+	if _, err := strconv.ParseUint(id, 10, 64); err != nil {
+		http.Error(w, "ID invalido", http.StatusBadRequest)
+		return
+	}
 
 	var libro Libro
 

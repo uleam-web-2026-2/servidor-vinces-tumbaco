@@ -5,7 +5,11 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"time"
 
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
+	"github.com/go-chi/httprate"
 	"github.com/uleam-web-2026-2/KEMA/internal/config"
 	"github.com/uleam-web-2026-2/KEMA/internal/intercambios"
 	"github.com/uleam-web-2026-2/KEMA/internal/repository"
@@ -22,12 +26,14 @@ func validarBaseDatos(databaseURL string) error {
 		return fmt.Errorf("la dirección de PostgreSQL no es válida")
 	}
 
-	if u.Hostname() != "localhost" && u.Hostname() != "127.0.0.1" {
-		return fmt.Errorf("la conexión debe utilizar localhost o 127.0.0.1")
-	}
+	host := u.Hostname()
+	puerto := u.Port()
 
-	if u.Port() != "5434" {
-		return fmt.Errorf("por seguridad, se requiere el puerto 5434")
+	conexionLocal := (host == "localhost" || host == "127.0.0.1") && puerto == "5434"
+	conexionDocker := host == "db" && puerto == "5432"
+
+	if !conexionLocal && !conexionDocker {
+		return fmt.Errorf("conexión no permitida: use localhost:5434 o db:5432")
 	}
 
 	if u.Path != "/intercambio_prueba" {
@@ -35,6 +41,12 @@ func validarBaseDatos(databaseURL string) error {
 	}
 
 	return nil
+}
+
+// porIP identifica al cliente mediante su dirección IP.
+func porIP(r *http.Request) (string, error) {
+	ip := middleware.GetClientIP(r.Context())
+	return httprate.CanonicalizeIP(ip), nil
 }
 
 func main() {
@@ -115,8 +127,21 @@ func main() {
 		fmt.Fprint(w, `{"estado":"ok"}`)
 	})
 
-	// Inicio de sesión.
-	http.HandleFunc("/login", intercambios.Login)
+	// Limitar el inicio de sesión a 5 intentos por minuto y por IP.
+	loginLimitado := httprate.LimitBy(
+		5,
+		time.Minute,
+		porIP,
+	)(http.HandlerFunc(intercambios.Login))
+
+	http.Handle("/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			intercambios.Login(w, r)
+			return
+		}
+
+		loginLimitado.ServeHTTP(w, r)
+	}))
 
 	// Rutas de intercambios.
 	rutasIntercambios := func(w http.ResponseWriter, r *http.Request) {
@@ -146,12 +171,35 @@ func main() {
 	http.HandleFunc("/intercambios", rutasIntercambios)
 	http.HandleFunc("/intercambios/", rutasIntercambios)
 
+	// Configuración CORS.
+	manejadorCORS := cors.Handler(cors.Options{
+		AllowedOrigins: []string{
+			"http://localhost:5173",
+		},
+		AllowedMethods: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"PATCH",
+			"DELETE",
+		},
+		AllowedHeaders: []string{
+			"Authorization",
+			"Content-Type",
+		},
+		MaxAge: 300,
+	})
+
 	// Configurar servidor HTTP.
 	servidor := &http.Server{
 		Addr:         ":" + cfg.Puerto,
 		ReadTimeout:  cfg.TiempoEspera,
 		WriteTimeout: cfg.TiempoEspera,
-		Handler:      http.DefaultServeMux,
+		Handler: manejadorCORS(
+			middleware.ClientIPFromRemoteAddr(
+				middleware.Logger(http.DefaultServeMux),
+			),
+		),
 	}
 
 	fmt.Println("Servidor iniciado en el puerto:", cfg.Puerto)

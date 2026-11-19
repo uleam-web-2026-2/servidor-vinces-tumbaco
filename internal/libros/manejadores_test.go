@@ -81,3 +81,35 @@ func TestObtenerLibroIDInvalido(t *testing.T) {
 		t.Fatalf("se esperaba %d y llego %d", http.StatusBadRequest, grabadora.Code)
 	}
 }
+
+func TestActualizarLibroIDInvalido(t *testing.T) {
+	peticion := httptest.NewRequest(
+		http.MethodPut,
+		"/libros/abc",
+		strings.NewReader(`{}`),
+	)
+
+	grabadora := httptest.NewRecorder()
+
+	enrutador().ServeHTTP(grabadora, peticion)
+
+	if grabadora.Code != http.StatusBadRequest {
+		t.Fatalf("se esperaba %d y llego %d", http.StatusBadRequest, grabadora.Code)
+	}
+}
+
+func TestEliminarLibroIDInvalido(t *testing.T) {
+	peticion := httptest.NewRequest(
+		http.MethodDelete,
+		"/libros/abc",
+		nil,
+	)
+
+	grabadora := httptest.NewRecorder()
+
+	enrutador().ServeHTTP(grabadora, peticion)
+
+	if grabadora.Code != http.StatusBadRequest {
+		t.Fatalf("se esperaba %d y llego %d", http.StatusBadRequest, grabadora.Code)
+	}
+}

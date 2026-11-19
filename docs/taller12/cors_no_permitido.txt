@@ -1,0 +1,5 @@
+﻿PRUEBA CORS - ORIGEN NO PERMITIDO
+
+HTTP/1.1 200 OK
+No se recibió Access-Control-Allow-Origin.
+No se autoriza el origen http://malo.example.

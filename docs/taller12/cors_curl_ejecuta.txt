@@ -1,0 +1,16 @@
+PRUEBA CORS: CURL DESDE ORIGEN NO PERMITIDO
+
+Método: PATCH
+URL: http://localhost:8080/intercambios/1
+Origin: http://malo.example
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+Vary: Origin
+
+{"id_intercambio":1,"estado":"cancelado","fecha_solicitud":null,"fecha_confirmacion":null,"fecha_finalizacion":null,"observaciones":""}
+
+Conclusión:
+La petición fue ejecutada por el servidor aunque el origen
+no esté autorizado por CORS. Esto demuestra que CORS no
+reemplaza los controles de autenticación y autorización.

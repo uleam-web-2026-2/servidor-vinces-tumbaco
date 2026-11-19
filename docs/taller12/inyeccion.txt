@@ -1,0 +1,19 @@
+﻿PRUEBA DE INYECCIÓN SQL - TALLER 12
+
+Endpoint probado:
+GET http://localhost:8080/intercambios/1%20OR%201=1
+
+Método de autenticación:
+Authorization: Bearer [TOKEN OMITIDO]
+
+Resultado obtenido:
+
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{"error":"El identificador no es válido"}
+
+Análisis:
+La API rechazó el identificador manipulado porque no cumple
+con el formato numérico positivo requerido. La solicitud fue
+rechazada antes de consultar el intercambio en la base de datos.
