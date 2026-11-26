@@ -1,5 +1,5 @@
 -- name: BuscarIntercambio :one
-SELECT id, estado
+SELECT id, estado, usuario_ofrece_id, usuario_recibe_id
 FROM intercambios
 WHERE id = $1;
 

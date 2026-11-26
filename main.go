@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"fmt"
@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/go-chi/httprate"
+	"github.com/uleam-web-2026-2/KEMA/internal/avisos"
 	"github.com/uleam-web-2026-2/KEMA/internal/config"
 	"github.com/uleam-web-2026-2/KEMA/internal/intercambios"
 	"github.com/uleam-web-2026-2/KEMA/internal/repository"
@@ -86,12 +87,12 @@ func main() {
 		&intercambios.Resena{},
 	)
 	if err != nil {
-        if strings.Contains(err.Error(), "must be owner of table") || strings.Contains(err.Error(), "42501") {
-            log.Println("Aviso: omitiendo cambios DDL de AutoMigrate por permisos del usuario de base de datos:", err)
-        } else {
-            log.Fatal("Error al preparar las tablas: ", err)
-        }
-    }
+		if strings.Contains(err.Error(), "must be owner of table") || strings.Contains(err.Error(), "42501") {
+			log.Println("Aviso: omitiendo cambios DDL de AutoMigrate por permisos del usuario de base de datos:", err)
+		} else {
+			log.Fatal("Error al preparar las tablas: ", err)
+		}
+	}
 
 	fmt.Println("Tablas preparadas correctamente")
 
@@ -114,6 +115,11 @@ func main() {
 	handler := &intercambios.Handler{
 		Servicio: servicio,
 	}
+	// Administrador de conexiones y avisos WebSocket.
+	administradorAvisos := avisos.Nuevo()
+
+	// Ruta para establecer conexiones WebSocket.
+	http.HandleFunc("/ws", administradorAvisos.Conectar)
 
 	// Ruta principal.
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -214,4 +220,3 @@ func main() {
 		log.Fatal("Error al iniciar el servidor: ", err)
 	}
 }
-
