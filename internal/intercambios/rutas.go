@@ -1,4 +1,4 @@
-﻿package intercambios
+package intercambios
 
 import "net/http"
 
@@ -22,5 +22,3 @@ func RutasProtegidas(handler *Handler) http.HandlerFunc {
 		}
 	}
 }
-
-

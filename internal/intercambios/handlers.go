@@ -103,17 +103,22 @@ func (h *Handler) Crear(w http.ResponseWriter, r *http.Request) {
 
 	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
 		responderError(w, http.StatusBadRequest,
-			"El cuerpo de la solicitud no es válido")
+			"El cuerpo de la solicitud no es vÃ¡lido")
 		return
 	}
 
-	intercambio, err := h.Servicio.Crear(solicitud.AInput())
+	input := solicitud.AInput()
+	if solicitanteToken := ExtraerSolicitanteDesdeRequest(r); solicitanteToken > 0 {
+		input.UsuarioSolicitanteID = solicitanteToken
+	}
+
+	intercambio, err := h.Servicio.Crear(input)
 
 	if err != nil {
 		mensaje := err.Error()
 		codigo := http.StatusBadRequest
 
-		if strings.Contains(mensaje, "no está disponible") {
+		if strings.Contains(mensaje, "no estÃ¡ disponible") {
 			codigo = http.StatusConflict
 		}
 
@@ -130,7 +135,7 @@ func (h *Handler) Actualizar(w http.ResponseWriter, r *http.Request, id uint) {
 
 	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
 		responderError(w, http.StatusBadRequest,
-			"El cuerpo de la solicitud no es válido")
+			"El cuerpo de la solicitud no es vÃ¡lido")
 		return
 	}
 
@@ -156,7 +161,7 @@ func (h *Handler) Actualizar(w http.ResponseWriter, r *http.Request, id uint) {
 	responderJSON(w, http.StatusOK, IntercambioARespuestaDTO(intercambio))
 }
 
-// Verificar si un cambio de estado está permitido.
+// Verificar si un cambio de estado estÃ¡ permitido.
 func TransicionPermitida(actual, nuevo string) bool {
 	switch actual {
 	case EstadoPendiente:
@@ -176,13 +181,13 @@ func (h *Handler) CambiarEstado(w http.ResponseWriter, r *http.Request, id uint)
 
 	if err := json.NewDecoder(r.Body).Decode(&solicitud); err != nil {
 		responderError(w, http.StatusBadRequest,
-			"El cuerpo de la solicitud no es válido")
+			"El cuerpo de la solicitud no es vÃ¡lido")
 		return
 	}
 
 	if !EstadoValido(solicitud.Estado) {
 		responderError(w, http.StatusBadRequest,
-			"El estado indicado no es válido")
+			"El estado indicado no es vÃ¡lido")
 		return
 	}
 
@@ -197,7 +202,7 @@ func (h *Handler) CambiarEstado(w http.ResponseWriter, r *http.Request, id uint)
 	if err != nil {
 		codigo := http.StatusInternalServerError
 
-		if strings.Contains(err.Error(), "transición") {
+		if strings.Contains(err.Error(), "transiciÃ³n") {
 			codigo = http.StatusConflict
 		}
 
@@ -233,7 +238,7 @@ func (h *Handler) Eliminar(w http.ResponseWriter, r *http.Request, id uint) {
 func (h *Handler) Rutas(w http.ResponseWriter, r *http.Request) {
 	if h.Servicio == nil {
 		responderError(w, http.StatusInternalServerError,
-			"El servicio de intercambios no está configurado")
+			"El servicio de intercambios no estÃ¡ configurado")
 		return
 	}
 
@@ -249,7 +254,7 @@ func (h *Handler) Rutas(w http.ResponseWriter, r *http.Request) {
 
 		default:
 			responderError(w, http.StatusMethodNotAllowed,
-				"Método no permitido")
+				"MÃ©todo no permitido")
 		}
 
 		return
@@ -266,7 +271,7 @@ func (h *Handler) Rutas(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil || id64 == 0 {
 		responderError(w, http.StatusBadRequest,
-			"El identificador no es válido")
+			"El identificador no es vÃ¡lido")
 		return
 	}
 
@@ -287,6 +292,6 @@ func (h *Handler) Rutas(w http.ResponseWriter, r *http.Request) {
 
 	default:
 		responderError(w, http.StatusMethodNotAllowed,
-			"Método no permitido")
+			"MÃ©todo no permitido")
 	}
 }
