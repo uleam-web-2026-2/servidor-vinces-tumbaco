@@ -95,3 +95,25 @@ func TestConectarRecibeAvisoYQuitaAlCerrar(t *testing.T) {
 		t.Fatalf("se esperaba 0 canales activos para el usuario tras cerrar, quedan %d", quedan)
 	}
 }
+func TestConectarRechazaOrigenNoAutorizado(t *testing.T) {
+	clave := strings.Repeat("o", 48)
+	t.Setenv("JWT_SECRET", clave)
+
+	gestor := Nuevo()
+	srv := httptest.NewServer(http.HandlerFunc(gestor.Conectar))
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/ws?token=" + firmarTokenPrueba(t, clave, "42")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	conn, _, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
+		HTTPHeader: http.Header{
+			"Origin": []string{"http://evil.example.com"},
+		},
+	})
+	if err == nil {
+		_ = conn.Close(websocket.StatusNormalClosure, "no debia conectar")
+		t.Fatal("se esperaba rechazo al conectar con origen no autorizado")
+	}
+}

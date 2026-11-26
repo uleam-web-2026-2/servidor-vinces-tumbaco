@@ -3,6 +3,7 @@
 ## 1. Conexión WebSocket (`/ws`)
 - **Sin token:** `GET /ws` -> `401 Unauthorized` (`token requerido`).
 - **Token inválido o expirado:** `GET /ws?token=token-invalido` -> `401 Unauthorized` (`token invalido o vencido`).
+- **Origen no autorizado:** `GET /ws?token=<jwt>` con `Origin: http://evil.example.com` -> conexión rechazada por `OriginPatterns` (`http://localhost:5173`).
 - **Token HS256 válido + Origin permitido (`http://localhost:5173`):** `GET /ws?token=<jwt>` -> `101 Switching Protocols` y suscripción activa por clave de usuario hasta el cierre de la conexión.
 
 ## 2. Notificación al cambiar estado de intercambio
