@@ -39,7 +39,7 @@ func (repo *IntercambiosRepository) Listar() ([]intercambios.Intercambio, error)
 // Obtener busca un intercambio por su identificador utilizando sqlc.
 func (repo *IntercambiosRepository) Obtener(id uint) (*intercambios.Intercambio, error) {
 	ctx := context.Background()
-	
+
 	// sqlc requiere el tipo adecuado (ej. int32)
 	row, err := repo.queries.BuscarIntercambio(ctx, int32(id))
 	if err != nil {
@@ -53,6 +53,16 @@ func (repo *IntercambiosRepository) Obtener(id uint) (*intercambios.Intercambio,
 	intercambio := &intercambios.Intercambio{
 		ID:     uint(row.ID),
 		Estado: row.Estado,
+	}
+
+	if row.UsuarioOfreceID.Valid {
+		idOfrece := uint(row.UsuarioOfreceID.Int32)
+		intercambio.UsuarioOfreceID = &idOfrece
+	}
+
+	if row.UsuarioRecibeID.Valid {
+		idRecibe := uint(row.UsuarioRecibeID.Int32)
+		intercambio.UsuarioRecibeID = &idRecibe
 	}
 
 	return intercambio, nil

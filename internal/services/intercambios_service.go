@@ -2,20 +2,37 @@ package services
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
+	"github.com/uleam-web-2026-2/KEMA/internal/avisos"
 	"github.com/uleam-web-2026-2/KEMA/internal/intercambios"
 	"github.com/uleam-web-2026-2/KEMA/internal/repository"
 	"gorm.io/gorm"
 )
 
-type IntercambiosService struct {
-	Repositorio *repository.IntercambiosRepository
+// EmisorAvisos permite enviar notificaciones de dominio sin acoplar el servicio a transporte.
+type EmisorAvisos interface {
+	Enviar(usuario string, aviso avisos.Aviso)
 }
 
-func NuevoIntercambiosService(repo *repository.IntercambiosRepository) *IntercambiosService {
+type IntercambiosService struct {
+	Repositorio *repository.IntercambiosRepository
+	Avisos      EmisorAvisos
+}
+
+func NuevoIntercambiosService(
+	repo *repository.IntercambiosRepository,
+	gestorAvisos ...EmisorAvisos,
+) *IntercambiosService {
+	var emisor EmisorAvisos
+	if len(gestorAvisos) > 0 {
+		emisor = gestorAvisos[0]
+	}
+
 	return &IntercambiosService{
 		Repositorio: repo,
+		Avisos:      emisor,
 	}
 }
 
@@ -57,12 +74,12 @@ func (s *IntercambiosService) Crear(
 	}
 
 	if ofrecido.ID == deseado.ID {
-		return nil, errors.New("no se puede intercambiar un ejemplar por sí mismo")
+		return nil, errors.New("no se puede intercambiar un ejemplar por si mismo")
 	}
 
 	if ofrecido.Disponibilidad != "disponible" ||
 		deseado.Disponibilidad != "disponible" {
-		return nil, errors.New("uno de los ejemplares no está disponible")
+		return nil, errors.New("uno de los ejemplares no esta disponible")
 	}
 
 	ahora := time.Now()
@@ -78,6 +95,7 @@ func (s *IntercambiosService) Crear(
 	}
 
 	detalle := &intercambios.DetalleIntercambio{
+		IntercambioID:       intercambio.ID,
 		EjemplarEntregadoID: ofrecido.ID,
 		EjemplarRecibidoID:  deseado.ID,
 		Cantidad:            1,
@@ -106,7 +124,7 @@ func (s *IntercambiosService) Actualizar(
 	if input.UsuarioOfreceID == 0 ||
 		input.UsuarioRecibeID == 0 ||
 		input.UsuarioOfreceID == input.UsuarioRecibeID {
-		return nil, errors.New("los usuarios indicados no son válidos")
+		return nil, errors.New("los usuarios indicados no son validos")
 	}
 
 	intercambio.UsuarioOfreceID = &input.UsuarioOfreceID
@@ -125,7 +143,7 @@ func (s *IntercambiosService) CambiarEstado(
 	nuevoEstado string,
 ) (*intercambios.Intercambio, error) {
 	if !intercambios.EstadoValido(nuevoEstado) {
-		return nil, errors.New("el estado indicado no es válido")
+		return nil, errors.New("el estado indicado no es valido")
 	}
 
 	intercambio, err := s.Repositorio.Obtener(id)
@@ -134,7 +152,7 @@ func (s *IntercambiosService) CambiarEstado(
 	}
 
 	if !intercambios.TransicionPermitida(intercambio.Estado, nuevoEstado) {
-		return nil, errors.New("la transición de estado no está permitida")
+		return nil, errors.New("la transicion de estado no esta permitida")
 	}
 
 	ahora := time.Now()
@@ -148,8 +166,29 @@ func (s *IntercambiosService) CambiarEstado(
 		intercambio.FechaFinalizacion = &ahora
 	}
 
+	// Guardar primero: nunca avisar si la persistencia falla.
 	if err := s.Repositorio.CambiarEstado(intercambio); err != nil {
 		return nil, err
+	}
+
+	if s.Avisos != nil {
+		aviso := avisos.Aviso{
+			ID:     intercambio.ID,
+			Estado: intercambio.Estado,
+		}
+		notificados := make(map[string]struct{})
+
+		for _, participante := range []*uint{intercambio.UsuarioOfreceID, intercambio.UsuarioRecibeID} {
+			if participante == nil || *participante == 0 {
+				continue
+			}
+			clave := strconv.Itoa(int(*participante))
+			if _, yaNotificado := notificados[clave]; yaNotificado {
+				continue
+			}
+			notificados[clave] = struct{}{}
+			s.Avisos.Enviar(clave, aviso)
+		}
 	}
 
 	return intercambio, nil

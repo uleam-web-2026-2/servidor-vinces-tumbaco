@@ -20,12 +20,12 @@ import (
 	"gorm.io/gorm"
 )
 
-// validarBaseDatos comprueba que la aplicaciÃ³n utilice
-// exclusivamente la base de datos de recuperaciÃ³n.
+// validarBaseDatos comprueba que la aplicaciÃƒÂ³n utilice
+// exclusivamente la base de datos de recuperaciÃƒÂ³n.
 func validarBaseDatos(databaseURL string) error {
 	u, err := url.Parse(databaseURL)
 	if err != nil {
-		return fmt.Errorf("la direcciÃ³n de PostgreSQL no es vÃ¡lida")
+		return fmt.Errorf("la direcciÃƒÂ³n de PostgreSQL no es vÃƒÂ¡lida")
 	}
 
 	host := u.Hostname()
@@ -35,7 +35,7 @@ func validarBaseDatos(databaseURL string) error {
 	conexionDocker := host == "db" && puerto == "5432"
 
 	if !conexionLocal && !conexionDocker {
-		return fmt.Errorf("conexiÃ³n no permitida: use localhost:5434 o db:5432")
+		return fmt.Errorf("conexiÃƒÂ³n no permitida: use localhost:5434 o db:5432")
 	}
 
 	if u.Path != "/intercambio_prueba" {
@@ -45,22 +45,22 @@ func validarBaseDatos(databaseURL string) error {
 	return nil
 }
 
-// porIP identifica al cliente mediante su direcciÃ³n IP.
+// porIP identifica al cliente mediante su direcciÃƒÂ³n IP.
 func porIP(r *http.Request) (string, error) {
 	ip := middleware.GetClientIP(r.Context())
 	return httprate.CanonicalizeIP(ip), nil
 }
 
 func main() {
-	// Cargar configuraciÃ³n.
+	// Cargar configuraciÃƒÂ³n.
 	cfg, err := config.Cargar()
 	if err != nil {
-		log.Fatal("Error de configuraciÃ³n: ", err)
+		log.Fatal("Error de configuraciÃƒÂ³n: ", err)
 	}
 
 	// Verificar la base de datos antes de conectarse.
 	if err := validarBaseDatos(cfg.DatabaseURL); err != nil {
-		log.Fatal("ConexiÃ³n bloqueada: ", err)
+		log.Fatal("ConexiÃƒÂ³n bloqueada: ", err)
 	}
 
 	// Conectar con PostgreSQL.
@@ -69,7 +69,7 @@ func main() {
 		log.Fatal("Error al conectar con PostgreSQL: ", err)
 	}
 
-	fmt.Println("ConexiÃ³n con PostgreSQL correcta")
+	fmt.Println("ConexiÃƒÂ³n con PostgreSQL correcta")
 
 	// Crear o actualizar las tablas de las 12 entidades.
 	err = db.AutoMigrate(
@@ -108,15 +108,16 @@ func main() {
 	}
 	repositorio := repository.NuevoIntercambiosRepository(db, sqlDB)
 
+	// Administrador unico de conexiones y avisos WebSocket.
+	administradorAvisos := avisos.Nuevo()
+
 	// CAPA 2: Service.
-	servicio := services.NuevoIntercambiosService(repositorio)
+	servicio := services.NuevoIntercambiosService(repositorio, administradorAvisos)
 
 	// CAPA 3: Handler.
 	handler := &intercambios.Handler{
 		Servicio: servicio,
 	}
-	// Administrador de conexiones y avisos WebSocket.
-	administradorAvisos := avisos.Nuevo()
 
 	// Ruta para establecer conexiones WebSocket.
 	http.HandleFunc("/ws", administradorAvisos.Conectar)
@@ -138,7 +139,7 @@ func main() {
 		fmt.Fprint(w, `{"estado":"ok"}`)
 	})
 
-	// Limitar el inicio de sesiÃ³n a 5 intentos por minuto y por IP.
+	// Limitar el inicio de sesiÃƒÂ³n a 5 intentos por minuto y por IP.
 	loginLimitado := httprate.LimitBy(
 		5,
 		time.Minute,
@@ -182,7 +183,7 @@ func main() {
 	http.HandleFunc("/intercambios", rutasIntercambios)
 	http.HandleFunc("/intercambios/", rutasIntercambios)
 
-	// ConfiguraciÃ³n CORS.
+	// ConfiguraciÃƒÂ³n CORS.
 	manejadorCORS := cors.Handler(cors.Options{
 		AllowedOrigins: []string{
 			"http://localhost:5173",
