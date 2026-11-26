@@ -1,0 +1,6 @@
+﻿=== RUN   TestCambiarEstadoEnviaAvisoSoloAParticipantes
+--- PASS: TestCambiarEstadoEnviaAvisoSoloAParticipantes (0.00s)
+=== RUN   TestCambiarEstadoNoEnviaAvisoSiFallaPersistencia
+--- PASS: TestCambiarEstadoNoEnviaAvisoSiFallaPersistencia (0.00s)
+PASS
+ok  	github.com/uleam-web-2026-2/KEMA/internal/services	1.857s
