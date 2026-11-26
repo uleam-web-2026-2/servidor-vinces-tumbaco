@@ -1,10 +1,11 @@
-package main
+﻿package main
 
 import (
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -18,12 +19,12 @@ import (
 	"gorm.io/gorm"
 )
 
-// validarBaseDatos comprueba que la aplicación utilice
-// exclusivamente la base de datos de recuperación.
+// validarBaseDatos comprueba que la aplicaciÃ³n utilice
+// exclusivamente la base de datos de recuperaciÃ³n.
 func validarBaseDatos(databaseURL string) error {
 	u, err := url.Parse(databaseURL)
 	if err != nil {
-		return fmt.Errorf("la dirección de PostgreSQL no es válida")
+		return fmt.Errorf("la direcciÃ³n de PostgreSQL no es vÃ¡lida")
 	}
 
 	host := u.Hostname()
@@ -33,7 +34,7 @@ func validarBaseDatos(databaseURL string) error {
 	conexionDocker := host == "db" && puerto == "5432"
 
 	if !conexionLocal && !conexionDocker {
-		return fmt.Errorf("conexión no permitida: use localhost:5434 o db:5432")
+		return fmt.Errorf("conexiÃ³n no permitida: use localhost:5434 o db:5432")
 	}
 
 	if u.Path != "/intercambio_prueba" {
@@ -43,22 +44,22 @@ func validarBaseDatos(databaseURL string) error {
 	return nil
 }
 
-// porIP identifica al cliente mediante su dirección IP.
+// porIP identifica al cliente mediante su direcciÃ³n IP.
 func porIP(r *http.Request) (string, error) {
 	ip := middleware.GetClientIP(r.Context())
 	return httprate.CanonicalizeIP(ip), nil
 }
 
 func main() {
-	// Cargar configuración.
+	// Cargar configuraciÃ³n.
 	cfg, err := config.Cargar()
 	if err != nil {
-		log.Fatal("Error de configuración: ", err)
+		log.Fatal("Error de configuraciÃ³n: ", err)
 	}
 
 	// Verificar la base de datos antes de conectarse.
 	if err := validarBaseDatos(cfg.DatabaseURL); err != nil {
-		log.Fatal("Conexión bloqueada: ", err)
+		log.Fatal("ConexiÃ³n bloqueada: ", err)
 	}
 
 	// Conectar con PostgreSQL.
@@ -67,7 +68,7 @@ func main() {
 		log.Fatal("Error al conectar con PostgreSQL: ", err)
 	}
 
-	fmt.Println("Conexión con PostgreSQL correcta")
+	fmt.Println("ConexiÃ³n con PostgreSQL correcta")
 
 	// Crear o actualizar las tablas de las 12 entidades.
 	err = db.AutoMigrate(
@@ -85,8 +86,12 @@ func main() {
 		&intercambios.Resena{},
 	)
 	if err != nil {
-		log.Fatal("Error al preparar las tablas: ", err)
-	}
+        if strings.Contains(err.Error(), "must be owner of table") || strings.Contains(err.Error(), "42501") {
+            log.Println("Aviso: omitiendo cambios DDL de AutoMigrate por permisos del usuario de base de datos:", err)
+        } else {
+            log.Fatal("Error al preparar las tablas: ", err)
+        }
+    }
 
 	fmt.Println("Tablas preparadas correctamente")
 
@@ -127,7 +132,7 @@ func main() {
 		fmt.Fprint(w, `{"estado":"ok"}`)
 	})
 
-	// Limitar el inicio de sesión a 5 intentos por minuto y por IP.
+	// Limitar el inicio de sesiÃ³n a 5 intentos por minuto y por IP.
 	loginLimitado := httprate.LimitBy(
 		5,
 		time.Minute,
@@ -171,7 +176,7 @@ func main() {
 	http.HandleFunc("/intercambios", rutasIntercambios)
 	http.HandleFunc("/intercambios/", rutasIntercambios)
 
-	// Configuración CORS.
+	// ConfiguraciÃ³n CORS.
 	manejadorCORS := cors.Handler(cors.Options{
 		AllowedOrigins: []string{
 			"http://localhost:5173",
@@ -209,3 +214,4 @@ func main() {
 		log.Fatal("Error al iniciar el servidor: ", err)
 	}
 }
+

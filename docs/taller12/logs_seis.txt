@@ -1,7 +1,27 @@
-# Registro de las 6 peticiones del Hito 2 (con defensas y usuario de la API)
-1 sin token -> 401
-2 login -> 200
-3 con token -> 200
-4 rol sin permiso -> 403
-5 cambio permitido -> 200
-6 transición prohibida -> 409
+﻿# Registro real de las 6 peticiones del Hito 2
+
+=== 1. Sin token (GET /intercambios) ===
+HTTP/1.1 401 Unauthorized
+
+
+=== 2. Login admin (POST /login) ===
+HTTP/1.1 200 OK
+{"token":"<JWT_ADMIN>"}
+
+=== 3. Con token (GET /intercambios) ===
+HTTP/1.1 200 OK
+[{"id_intercambio":1,"estado":"entregado","usuario_ofrece_id":1,"usuario_recibe_id":2,"fecha_solicitud":"2026-11-07T16:44:18.656157Z","fecha_confirmacion":null,"fecha_finalizacion":null,"observaciones":"Intercambio de libros de demostracion"}]
+
+
+=== 4. Rol sin permiso (PATCH /intercambios/2 con rol usuario) ===
+HTTP/1.1 403 Forbidden
+
+
+=== 5. Cambio permitido (PATCH /intercambios/2 -> aceptado) ===
+HTTP/1.1 200 OK
+{"id_intercambio":2,"estado":"aceptado","fecha_solicitud":null,"fecha_confirmacion":"2026-11-26T18:17:57.629391254Z","fecha_finalizacion":null,"observaciones":""}
+
+
+=== 6. Transicion prohibida (PATCH /intercambios/2 -> pendiente) ===
+HTTP/1.1 409 Conflict
+

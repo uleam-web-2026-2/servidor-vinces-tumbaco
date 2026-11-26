@@ -1,5 +1,4 @@
-
-name: kema-s7
+﻿name: kema-s7
 
 services:
   db:
@@ -10,6 +9,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d intercambio_prueba"]
       interval: 3s
@@ -27,7 +27,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/intercambio_prueba?sslmode=disable
+      DATABASE_URL: postgres://api_app:${API_DB_PASSWORD:-api_app_pass}@db:5432/intercambio_prueba?sslmode=disable
     depends_on:
       db:
         condition: service_healthy
