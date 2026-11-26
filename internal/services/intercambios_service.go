@@ -16,6 +16,11 @@ type EmisorAvisos interface {
 	Enviar(usuario string, aviso avisos.Aviso)
 }
 
+// EmisorPorRol permite notificar eventos de negocio a conexiones filtradas por rol.
+type EmisorPorRol interface {
+	EnviarPorRol(rol string, aviso avisos.Aviso)
+}
+
 type IntercambiosService struct {
 	Repositorio *repository.IntercambiosRepository
 	Avisos      EmisorAvisos
@@ -105,6 +110,14 @@ func (s *IntercambiosService) Crear(
 		return nil, err
 	}
 
+	if emisorRol, ok := s.Avisos.(EmisorPorRol); ok && emisorRol != nil {
+		emisorRol.EnviarPorRol("administrador", avisos.Aviso{
+			ID:     intercambio.ID,
+			Estado: intercambio.Estado,
+			Evento: "creado",
+		})
+	}
+
 	return intercambio, nil
 }
 
@@ -175,6 +188,7 @@ func (s *IntercambiosService) CambiarEstado(
 		aviso := avisos.Aviso{
 			ID:     intercambio.ID,
 			Estado: intercambio.Estado,
+			Evento: "estado_cambiado",
 		}
 		notificados := make(map[string]struct{})
 

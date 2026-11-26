@@ -40,6 +40,11 @@ func extraerClaveUsuario(claims jwt.MapClaims) string {
 	return ""
 }
 
+func extraerRol(claims jwt.MapClaims) string {
+	rol, _ := claims["rol"].(string)
+	return rol
+}
+
 // Conectar valida el token y establece una conexion WebSocket.
 func (a *Avisos) Conectar(w http.ResponseWriter, r *http.Request) {
 	tokenTexto := r.URL.Query().Get("token")
@@ -78,6 +83,8 @@ func (a *Avisos) Conectar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rol := extraerRol(claims)
+
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
 		OriginPatterns: []string{"http://localhost:5173"},
 	})
@@ -86,7 +93,7 @@ func (a *Avisos) Conectar(w http.ResponseWriter, r *http.Request) {
 	}
 	defer conn.CloseNow()
 
-	canal := a.Suscribir(usuario)
+	canal := a.SuscribirConRol(usuario, rol)
 	defer a.Quitar(usuario, canal)
 
 	ctx := conn.CloseRead(context.Background())
