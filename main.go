@@ -1,12 +1,12 @@
-﻿package main
+package main
 
 import (
 	"fmt"
 	"log"
 	"net/http"
 	"net/url"
-	"strings"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -200,23 +200,22 @@ func main() {
 	}
 }
 
-
 type notificadorCreacionRol struct {
-hub *avisos.Avisos
-rol string
+	hub *avisos.Avisos
+	rol string
 }
 
 func (n *notificadorCreacionRol) NotificarCreacion(intercambio *intercambios.Intercambio, creadorID uint) {
-if n == nil || n.hub == nil || intercambio == nil {
-return
-}
-n.hub.EnviarPorRol(
-n.rol,
-avisos.Aviso{
-ID:     intercambio.ID,
-Estado: intercambio.Estado,
-Evento: "intercambio_creado",
-},
-strconv.FormatUint(uint64(creadorID), 10),
-)
+	if n == nil || n.hub == nil || intercambio == nil {
+		return
+	}
+	n.hub.EnviarPorRol(
+		n.rol,
+		avisos.Aviso{
+			ID:     intercambio.ID,
+			Estado: intercambio.Estado,
+			Evento: "intercambio_creado",
+		},
+		strconv.FormatUint(uint64(creadorID), 10),
+	)
 }
