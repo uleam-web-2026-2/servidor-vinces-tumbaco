@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"fmt"
@@ -21,12 +21,12 @@ import (
 	"gorm.io/gorm"
 )
 
-// validarBaseDatos comprueba que la aplicaciÃƒÆ’Ã‚Â³n utilice
-// exclusivamente la base de datos de recuperaciÃƒÆ’Ã‚Â³n.
+// validarBaseDatos comprueba que la aplicaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n utilice
+// exclusivamente la base de datos de recuperaciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n.
 func validarBaseDatos(databaseURL string) error {
 	u, err := url.Parse(databaseURL)
 	if err != nil {
-		return fmt.Errorf("la direcciÃƒÆ’Ã‚Â³n de PostgreSQL no es vÃƒÆ’Ã‚Â¡lida")
+		return fmt.Errorf("la direcciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n de PostgreSQL no es vÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¡lida")
 	}
 
 	host := u.Hostname()
@@ -36,7 +36,7 @@ func validarBaseDatos(databaseURL string) error {
 	conexionDocker := host == "db" && puerto == "5432"
 
 	if !conexionLocal && !conexionDocker {
-		return fmt.Errorf("conexiÃƒÆ’Ã‚Â³n no permitida: use localhost:5434 o db:5432")
+		return fmt.Errorf("conexiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n no permitida: use localhost:5434 o db:5432")
 	}
 
 	if u.Path != "/intercambio_prueba" {
@@ -46,22 +46,22 @@ func validarBaseDatos(databaseURL string) error {
 	return nil
 }
 
-// porIP identifica al cliente mediante su direcciÃƒÆ’Ã‚Â³n IP.
+// porIP identifica al cliente mediante su direcciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n IP.
 func porIP(r *http.Request) (string, error) {
 	ip := middleware.GetClientIP(r.Context())
 	return httprate.CanonicalizeIP(ip), nil
 }
 
 func main() {
-	// Cargar configuraciÃƒÆ’Ã‚Â³n.
+	// Cargar configuraciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n.
 	cfg, err := config.Cargar()
 	if err != nil {
-		log.Fatal("Error de configuraciÃƒÆ’Ã‚Â³n: ", err)
+		log.Fatal("Error de configuraciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n: ", err)
 	}
 
 	// Verificar la base de datos antes de conectarse.
 	if err := validarBaseDatos(cfg.DatabaseURL); err != nil {
-		log.Fatal("ConexiÃƒÆ’Ã‚Â³n bloqueada: ", err)
+		log.Fatal("ConexiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n bloqueada: ", err)
 	}
 
 	// Conectar con PostgreSQL.
@@ -70,7 +70,7 @@ func main() {
 		log.Fatal("Error al conectar con PostgreSQL: ", err)
 	}
 
-	fmt.Println("ConexiÃƒÆ’Ã‚Â³n con PostgreSQL correcta")
+	fmt.Println("ConexiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n con PostgreSQL correcta")
 
 	// Crear o actualizar las tablas de las 12 entidades.
 	err = db.AutoMigrate(
@@ -101,6 +101,9 @@ func main() {
 	if err := intercambios.Sembrar(db); err != nil {
 		log.Fatal("Error al insertar datos iniciales: ", err)
 	}
+
+	// Configurar autenticacion de usuarios reales contra la base de datos.
+	intercambios.ConfigurarLoginDB(db)
 
 	// CAPA 1: Repository.
 	sqlDB, err := db.DB()
@@ -140,7 +143,7 @@ func main() {
 		fmt.Fprint(w, `{"estado":"ok"}`)
 	})
 
-	// Limitar el inicio de sesiÃƒÆ’Ã‚Â³n a 5 intentos por minuto y por IP.
+	// Limitar el inicio de sesiÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n a 5 intentos por minuto y por IP.
 	loginLimitado := httprate.LimitBy(
 		5,
 		time.Minute,
@@ -161,7 +164,7 @@ func main() {
 	http.HandleFunc("/intercambios", rutasIntercambios)
 	http.HandleFunc("/intercambios/", rutasIntercambios)
 
-	// ConfiguraciÃƒÆ’Ã‚Â³n CORS.
+	// ConfiguraciÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â³n CORS.
 	manejadorCORS := cors.Handler(cors.Options{
 		AllowedOrigins: []string{
 			"http://localhost:5173",
@@ -219,3 +222,4 @@ func (n *notificadorCreacionRol) NotificarCreacion(intercambio *intercambios.Int
 		strconv.FormatUint(uint64(creadorID), 10),
 	)
 }
+

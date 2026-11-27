@@ -1,222 +1,303 @@
-package intercambios
+﻿package intercambios
 
 import (
-	"crypto/subtle"
-	"encoding/json"
-	"net/http"
-	"os"
-	"strconv"
-	"strings"
-	"time"
+"crypto/subtle"
+"encoding/json"
+"net/http"
+"os"
+"strconv"
+"strings"
+"sync"
+"time"
 
-	"github.com/golang-jwt/jwt/v5"
+"github.com/golang-jwt/jwt/v5"
+"golang.org/x/crypto/bcrypt"
+"gorm.io/gorm"
 )
 
 type Credenciales struct {
-	Usuario string `json:"usuario"`
-	Clave   string `json:"clave"`
+Usuario string `json:"usuario"`
+Correo  string `json:"correo"`
+Clave   string `json:"clave"`
+}
+
+var (
+loginDBMu sync.RWMutex
+loginDB   *gorm.DB
+)
+
+// ConfigurarLoginDB registra la conexion GORM para autenticar usuarios reales desde la base de datos.
+func ConfigurarLoginDB(db *gorm.DB) {
+loginDBMu.Lock()
+defer loginDBMu.Unlock()
+loginDB = db
+}
+
+func obtenerLoginDB() *gorm.DB {
+loginDBMu.RLock()
+defer loginDBMu.RUnlock()
+return loginDB
 }
 
 func extraerUsuarioIDDesdeClaims(claims jwt.MapClaims) uint {
-	if rawID, existe := claims["id"]; existe && rawID != nil {
-		switch v := rawID.(type) {
-		case float64:
-			if v > 0 {
-				return uint(v)
-			}
-		case int:
-			if v > 0 {
-				return uint(v)
-			}
-		case string:
-			if n, err := strconv.Atoi(v); err == nil && n > 0 {
-				return uint(n)
-			}
-		}
-	}
+if rawID, existe := claims["id"]; existe && rawID != nil {
+switch v := rawID.(type) {
+case float64:
+if v > 0 {
+return uint(v)
+}
+case int:
+if v > 0 {
+return uint(v)
+}
+case string:
+if n, err := strconv.Atoi(v); err == nil && n > 0 {
+return uint(n)
+}
+}
+}
 
-	if subNum, ok := claims["sub"].(float64); ok && subNum > 0 {
-		return uint(subNum)
-	}
+if subNum, ok := claims["sub"].(float64); ok && subNum > 0 {
+return uint(subNum)
+}
 
-	if subStr, ok := claims["sub"].(string); ok && subStr != "" {
-		if n, err := strconv.Atoi(subStr); err == nil && n > 0 {
-			return uint(n)
-		}
-	}
+if subStr, ok := claims["sub"].(string); ok && subStr != "" {
+if n, err := strconv.Atoi(subStr); err == nil && n > 0 {
+return uint(n)
+}
+}
 
-	return 0
+return 0
 }
 
 // ExtraerSolicitanteDesdeRequest obtiene el ID del usuario autenticado desde el JWT del request.
 func ExtraerSolicitanteDesdeRequest(r *http.Request) uint {
-	autorizacion := r.Header.Get("Authorization")
-	partes := strings.Fields(autorizacion)
-	if len(partes) != 2 || !strings.EqualFold(partes[0], "Bearer") {
-		return 0
-	}
+autorizacion := r.Header.Get("Authorization")
+partes := strings.Fields(autorizacion)
+if len(partes) != 2 || !strings.EqualFold(partes[0], "Bearer") {
+return 0
+}
 
-	clave := os.Getenv("JWT_SECRET")
-	if len(clave) < 32 {
-		return 0
-	}
+clave := os.Getenv("JWT_SECRET")
+if len(clave) < 32 {
+return 0
+}
 
-	token, err := jwt.Parse(
-		partes[1],
-		func(t *jwt.Token) (interface{}, error) {
-			return []byte(clave), nil
-		},
-		jwt.WithValidMethods([]string{"HS256"}),
-	)
-	if err != nil || !token.Valid {
-		return 0
-	}
+token, err := jwt.Parse(
+partes[1],
+func(t *jwt.Token) (interface{}, error) {
+return []byte(clave), nil
+},
+jwt.WithValidMethods([]string{"HS256"}),
+)
+if err != nil || !token.Valid {
+return 0
+}
 
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return 0
-	}
+claims, ok := token.Claims.(jwt.MapClaims)
+if !ok {
+return 0
+}
 
-	return extraerUsuarioIDDesdeClaims(claims)
+return extraerUsuarioIDDesdeClaims(claims)
 }
 
 func claveValida(ingresada string, nombresEnv ...string) bool {
-	if ingresada == "" {
-		return false
-	}
-
-	for _, envName := range nombresEnv {
-		esperada := os.Getenv(envName)
-		if esperada != "" && subtle.ConstantTimeCompare([]byte(ingresada), []byte(esperada)) == 1 {
-			return true
-		}
-	}
-
-	return false
+if ingresada == "" {
+return false
 }
 
-// Login valida los usuarios de demostracion y entrega un JWT.
+for _, envName := range nombresEnv {
+esperada := os.Getenv(envName)
+if esperada != "" && subtle.ConstantTimeCompare([]byte(ingresada), []byte(esperada)) == 1 {
+return true
+}
+}
+
+return false
+}
+
+func validarClaveUsuarioBD(usuario Usuario, claveIngresada string) bool {
+if claveIngresada == "" {
+return false
+}
+
+if usuario.Contrasena != "" {
+if strings.HasPrefix(usuario.Contrasena, "$2a$") || strings.HasPrefix(usuario.Contrasena, "$2b$") || strings.HasPrefix(usuario.Contrasena, "$2y$") {
+return bcrypt.CompareHashAndPassword([]byte(usuario.Contrasena), []byte(claveIngresada)) == nil
+}
+return subtle.ConstantTimeCompare([]byte(claveIngresada), []byte(usuario.Contrasena)) == 1
+}
+
+if usuario.Rol == "administrador" {
+if esperado := os.Getenv("DEMO_ADMIN_PASSWORD"); esperado != "" {
+return subtle.ConstantTimeCompare([]byte(claveIngresada), []byte(esperado)) == 1
+}
+} else {
+if esperado := os.Getenv("DEMO_USER_PASSWORD"); esperado != "" {
+return subtle.ConstantTimeCompare([]byte(claveIngresada), []byte(esperado)) == 1
+}
+if esperado := os.Getenv("DEMO_SECOND_USER_PASSWORD"); esperado != "" {
+return subtle.ConstantTimeCompare([]byte(claveIngresada), []byte(esperado)) == 1
+}
+}
+
+return false
+}
+
+// Login valida un usuario real desde la base de datos (o demostracion si no hay BD configurada) y entrega un JWT.
 func Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		responderError(w, http.StatusMethodNotAllowed,
-			"metodo no permitido")
-		return
-	}
+if r.Method != http.MethodPost {
+responderError(w, http.StatusMethodNotAllowed,
+"metodo no permitido")
+return
+}
 
-	var datos Credenciales
+var datos Credenciales
 
-	if err := json.NewDecoder(r.Body).Decode(&datos); err != nil {
-		responderError(w, http.StatusBadRequest, "JSON invalido")
-		return
-	}
+if err := json.NewDecoder(r.Body).Decode(&datos); err != nil {
+responderError(w, http.StatusBadRequest, "JSON invalido")
+return
+}
 
-	var rol string
-	var usuarioID uint
+identificador := strings.TrimSpace(datos.Correo)
+if identificador == "" {
+identificador = strings.TrimSpace(datos.Usuario)
+}
 
-	switch {
-	case datos.Usuario == "kenyis_admin" && claveValida(datos.Clave, "DEMO_ADMIN_PASSWORD"):
-		rol = "administrador"
-		usuarioID = 3
+var rol string
+var usuarioID uint
+var asunto string
 
-	case datos.Usuario == "majo_user" && claveValida(datos.Clave, "DEMO_USER_PASSWORD"):
-		rol = "usuario"
-		usuarioID = 1
+if db := obtenerLoginDB(); db != nil {
+var usuario Usuario
+if err := db.Where("LOWER(correo) = LOWER(?)", identificador).First(&usuario).Error; err != nil {
+responderError(w, http.StatusUnauthorized, "credenciales incorrectas")
+return
+}
 
-	case datos.Usuario == "carlos_user" && claveValida(datos.Clave, "DEMO_SECOND_USER_PASSWORD", "DEMO_USER_PASSWORD"):
-		rol = "usuario"
-		usuarioID = 2
+if usuario.Estado != "" && !strings.EqualFold(usuario.Estado, "activo") {
+responderError(w, http.StatusUnauthorized, "usuario inactivo")
+return
+}
 
-	default:
-		responderError(w, http.StatusUnauthorized,
-			"credenciales incorrectas")
-		return
-	}
+if !validarClaveUsuarioBD(usuario, datos.Clave) {
+responderError(w, http.StatusUnauthorized, "credenciales incorrectas")
+return
+}
 
-	clave := os.Getenv("JWT_SECRET")
-	if len(clave) < 32 {
-		responderError(w, http.StatusInternalServerError,
-			"JWT_SECRET no esta configurado correctamente")
-		return
-	}
+usuarioID = usuario.ID
+rol = usuario.Rol
+asunto = strconv.FormatUint(uint64(usuario.ID), 10)
+} else {
+switch {
+case datos.Usuario == "kenyis_admin" && claveValida(datos.Clave, "DEMO_ADMIN_PASSWORD"):
+rol = "administrador"
+usuarioID = 3
+asunto = "3"
 
-	claims := jwt.MapClaims{
-		"id":  usuarioID,
-		"sub": datos.Usuario,
-		"rol": rol,
-		"iat": time.Now().Unix(),
-		"exp": time.Now().Add(30 * time.Minute).Unix(),
-	}
+case datos.Usuario == "majo_user" && claveValida(datos.Clave, "DEMO_USER_PASSWORD"):
+rol = "usuario"
+usuarioID = 1
+asunto = "1"
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+case datos.Usuario == "carlos_user" && claveValida(datos.Clave, "DEMO_SECOND_USER_PASSWORD", "DEMO_USER_PASSWORD"):
+rol = "usuario"
+usuarioID = 2
+asunto = "2"
 
-	firmado, err := token.SignedString([]byte(clave))
-	if err != nil {
-		responderError(w, http.StatusInternalServerError,
-			"no se pudo generar el token")
-		return
-	}
+default:
+responderError(w, http.StatusUnauthorized,
+"credenciales incorrectas")
+return
+}
+}
 
-	responderJSON(w, http.StatusOK, map[string]string{
-		"token": firmado,
-	})
+clave := os.Getenv("JWT_SECRET")
+if len(clave) < 32 {
+responderError(w, http.StatusInternalServerError,
+"JWT_SECRET no esta configurado correctamente")
+return
+}
+
+claims := jwt.MapClaims{
+"id":  usuarioID,
+"sub": asunto,
+"rol": rol,
+"iat": time.Now().Unix(),
+"exp": time.Now().Add(30 * time.Minute).Unix(),
+}
+
+token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+firmado, err := token.SignedString([]byte(clave))
+if err != nil {
+responderError(w, http.StatusInternalServerError,
+"no se pudo generar el token")
+return
+}
+
+responderJSON(w, http.StatusOK, map[string]string{
+"token": firmado,
+})
 }
 
 // Proteger exige un token valido y un rol permitido.
 func Proteger(siguiente http.HandlerFunc, roles ...string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		autorizacion := r.Header.Get("Authorization")
-		partes := strings.Fields(autorizacion)
+return func(w http.ResponseWriter, r *http.Request) {
+autorizacion := r.Header.Get("Authorization")
+partes := strings.Fields(autorizacion)
 
-		if len(partes) != 2 ||
-			!strings.EqualFold(partes[0], "Bearer") {
-			responderError(w, http.StatusUnauthorized,
-				"token requerido")
-			return
-		}
+if len(partes) != 2 ||
+!strings.EqualFold(partes[0], "Bearer") {
+responderError(w, http.StatusUnauthorized,
+"token requerido")
+return
+}
 
-		clave := os.Getenv("JWT_SECRET")
-		if len(clave) < 32 {
-			responderError(w, http.StatusInternalServerError,
-				"JWT_SECRET no esta configurado correctamente")
-			return
-		}
+clave := os.Getenv("JWT_SECRET")
+if len(clave) < 32 {
+responderError(w, http.StatusInternalServerError,
+"JWT_SECRET no esta configurado correctamente")
+return
+}
 
-		token, err := jwt.Parse(
-			partes[1],
-			func(t *jwt.Token) (interface{}, error) {
-				return []byte(clave), nil
-			},
-			jwt.WithValidMethods([]string{"HS256"}),
-		)
+token, err := jwt.Parse(
+partes[1],
+func(t *jwt.Token) (interface{}, error) {
+return []byte(clave), nil
+},
+jwt.WithValidMethods([]string{"HS256"}),
+)
 
-		if err != nil || !token.Valid {
-			responderError(w, http.StatusUnauthorized,
-				"token invalido o vencido")
-			return
-		}
+if err != nil || !token.Valid {
+responderError(w, http.StatusUnauthorized,
+"token invalido o vencido")
+return
+}
 
-		claims, ok := token.Claims.(jwt.MapClaims)
-		if !ok {
-			responderError(w, http.StatusUnauthorized,
-				"token invalido")
-			return
-		}
+claims, ok := token.Claims.(jwt.MapClaims)
+if !ok {
+responderError(w, http.StatusUnauthorized,
+"token invalido")
+return
+}
 
-		rol, ok := claims["rol"].(string)
-		if !ok {
-			responderError(w, http.StatusUnauthorized,
-				"rol invalido")
-			return
-		}
+rol, ok := claims["rol"].(string)
+if !ok {
+responderError(w, http.StatusUnauthorized,
+"rol invalido")
+return
+}
 
-		for _, permitido := range roles {
-			if rol == permitido {
-				siguiente(w, r)
-				return
-			}
-		}
+for _, permitido := range roles {
+if rol == permitido {
+siguiente(w, r)
+return
+}
+}
 
-		responderError(w, http.StatusForbidden,
-			"no tienes permiso para esta operacion")
-	}
+responderError(w, http.StatusForbidden,
+"no tienes permiso para esta operacion")
+}
 }
