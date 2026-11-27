@@ -1,0 +1,4 @@
+﻿=== RUN   TestRetoAvisaALosQueAdministran
+--- PASS: TestRetoAvisaALosQueAdministran (0.20s)
+PASS
+ok  	github.com/uleam-web-2026-2/KEMA/internal/avisos	(cached)

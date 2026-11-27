@@ -1,4 +1,4 @@
-package main
+﻿package main
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -20,12 +21,12 @@ import (
 	"gorm.io/gorm"
 )
 
-// validarBaseDatos comprueba que la aplicaciÃƒÂ³n utilice
-// exclusivamente la base de datos de recuperaciÃƒÂ³n.
+// validarBaseDatos comprueba que la aplicaciÃƒÆ’Ã‚Â³n utilice
+// exclusivamente la base de datos de recuperaciÃƒÆ’Ã‚Â³n.
 func validarBaseDatos(databaseURL string) error {
 	u, err := url.Parse(databaseURL)
 	if err != nil {
-		return fmt.Errorf("la direcciÃƒÂ³n de PostgreSQL no es vÃƒÂ¡lida")
+		return fmt.Errorf("la direcciÃƒÆ’Ã‚Â³n de PostgreSQL no es vÃƒÆ’Ã‚Â¡lida")
 	}
 
 	host := u.Hostname()
@@ -35,7 +36,7 @@ func validarBaseDatos(databaseURL string) error {
 	conexionDocker := host == "db" && puerto == "5432"
 
 	if !conexionLocal && !conexionDocker {
-		return fmt.Errorf("conexiÃƒÂ³n no permitida: use localhost:5434 o db:5432")
+		return fmt.Errorf("conexiÃƒÆ’Ã‚Â³n no permitida: use localhost:5434 o db:5432")
 	}
 
 	if u.Path != "/intercambio_prueba" {
@@ -45,22 +46,22 @@ func validarBaseDatos(databaseURL string) error {
 	return nil
 }
 
-// porIP identifica al cliente mediante su direcciÃƒÂ³n IP.
+// porIP identifica al cliente mediante su direcciÃƒÆ’Ã‚Â³n IP.
 func porIP(r *http.Request) (string, error) {
 	ip := middleware.GetClientIP(r.Context())
 	return httprate.CanonicalizeIP(ip), nil
 }
 
 func main() {
-	// Cargar configuraciÃƒÂ³n.
+	// Cargar configuraciÃƒÆ’Ã‚Â³n.
 	cfg, err := config.Cargar()
 	if err != nil {
-		log.Fatal("Error de configuraciÃƒÂ³n: ", err)
+		log.Fatal("Error de configuraciÃƒÆ’Ã‚Â³n: ", err)
 	}
 
 	// Verificar la base de datos antes de conectarse.
 	if err := validarBaseDatos(cfg.DatabaseURL); err != nil {
-		log.Fatal("ConexiÃƒÂ³n bloqueada: ", err)
+		log.Fatal("ConexiÃƒÆ’Ã‚Â³n bloqueada: ", err)
 	}
 
 	// Conectar con PostgreSQL.
@@ -69,7 +70,7 @@ func main() {
 		log.Fatal("Error al conectar con PostgreSQL: ", err)
 	}
 
-	fmt.Println("ConexiÃƒÂ³n con PostgreSQL correcta")
+	fmt.Println("ConexiÃƒÆ’Ã‚Â³n con PostgreSQL correcta")
 
 	// Crear o actualizar las tablas de las 12 entidades.
 	err = db.AutoMigrate(
@@ -139,7 +140,7 @@ func main() {
 		fmt.Fprint(w, `{"estado":"ok"}`)
 	})
 
-	// Limitar el inicio de sesiÃƒÂ³n a 5 intentos por minuto y por IP.
+	// Limitar el inicio de sesiÃƒÆ’Ã‚Â³n a 5 intentos por minuto y por IP.
 	loginLimitado := httprate.LimitBy(
 		5,
 		time.Minute,
@@ -155,35 +156,12 @@ func main() {
 		loginLimitado.ServeHTTP(w, r)
 	}))
 
-	// Rutas de intercambios.
-	rutasIntercambios := func(w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case http.MethodGet:
-			intercambios.Proteger(
-				handler.Rutas,
-				"administrador",
-				"usuario",
-			)(w, r)
-
-		case http.MethodPost,
-			http.MethodPut,
-			http.MethodPatch,
-			http.MethodDelete:
-
-			intercambios.Proteger(
-				handler.Rutas,
-				"administrador",
-			)(w, r)
-
-		default:
-			handler.Rutas(w, r)
-		}
-	}
+	rutasIntercambios := intercambios.RutasProtegidas(handler)
 
 	http.HandleFunc("/intercambios", rutasIntercambios)
 	http.HandleFunc("/intercambios/", rutasIntercambios)
 
-	// ConfiguraciÃƒÂ³n CORS.
+	// ConfiguraciÃƒÆ’Ã‚Â³n CORS.
 	manejadorCORS := cors.Handler(cors.Options{
 		AllowedOrigins: []string{
 			"http://localhost:5173",
@@ -220,4 +198,25 @@ func main() {
 	if err := servidor.ListenAndServe(); err != nil {
 		log.Fatal("Error al iniciar el servidor: ", err)
 	}
+}
+
+
+type notificadorCreacionRol struct {
+hub *avisos.Avisos
+rol string
+}
+
+func (n *notificadorCreacionRol) NotificarCreacion(intercambio *intercambios.Intercambio, creadorID uint) {
+if n == nil || n.hub == nil || intercambio == nil {
+return
+}
+n.hub.EnviarPorRol(
+n.rol,
+avisos.Aviso{
+ID:     intercambio.ID,
+Estado: intercambio.Estado,
+Evento: "intercambio_creado",
+},
+strconv.FormatUint(uint64(creadorID), 10),
+)
 }
